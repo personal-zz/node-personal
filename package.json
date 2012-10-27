@@ -1,0 +1,23 @@
+{
+  "name": "node-personal",
+  "version": "0.0.1",
+  "description": "Library for connecting to Personal API using Node.js",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "1.x.x",
+    "should": "1.x.x"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mike-spainhower/node-personal.git"
+  },
+  "keywords": [
+    "personal"
+  ],
+  "author": "Personal",
+  "license": "MIT"
+}
