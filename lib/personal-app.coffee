@@ -4,22 +4,79 @@
 # MIT License
 ###
 
+crypto = require "crypto"
+
 class PersonalApp
     ###
     PersonalApp is the central class to the library.  Instantiate it to access the Personal API.
     ###
     
-    _config = {}
+    constructor: (@config) ->
+        ###
+        config:
+            client_id: string - <client id> (required)
+            client_secret: string - <client secret> (required)
+        ###
+        @_state = {}
+        @_access = {}
     
-    constructor: (options) ->
+    get_auth_request_url: (options) ->
         ###
+        Get the URL for sending a user to the authorization page
+
         options:
-            client_id: <client id> (required)
-            client_secret: <client secret> (required)
+            redirect_uri: string - The callback URL that the user will return to after authorization (required)
+            scope: PersonalScope - Object representing the scope for which you are requesting authorization (required)
+            update: boolean - specifies if the selection UI dialog should be presented even if the 3rd party already has access to the requested resource(default: true)
+            sandbox: boolean - uses sandbox if true, production otherwise (default: false)
+
+        returns a url object, call url.format(<return value>) to get formatted URL string (see http://nodejs.org/api/url.html) 
         ###
-        _config = options
+
+        #add state param to redirect uri for the securitys
+        state_param = crypto.randomBytes(32).toString('hex')
+        redir_url_obj = url.parse options.redirect_uri, true
+        redir_url_obj.search = undefined
+        redir_url_obj.query.state = state_param
+        @_state[state_param] = url.format(redir_url_obj)
+        
+        #create url object for user redirect
+        if options.sandbox
+            urlObj = url.parse("https://api-sandbox.personal.com/oauth/authorize", true)
+        else
+            urlObj = url.parse("https://api.personal.com/oauth/authorize", true)
+        urlObj.search = undefined
+        urlObj.query =
+            client_id: @config.client_id
+            response_type: "code"
+            redirect_uri: @_state[state_param]
+            scope: options.scope.to_s()
+            update: (update == false ? false : true)
+        return urlObj
+
+    get_access_token_auth: (code, state, callback) ->
+        ###
+        Get the access token for Personal API access using authorization code flow
+
+        code: string - code returned in querystring of callback url (required)
+        state: string - state parameter return from query string of callback url (required)
+        callback: function - function(access_token){console.log(access_token);} (required)
+        ###
+
+        #run post
+        #place returned infos into @_access
+        #run callback(access_token)
 
 
+    get_client: (access_code) ->
+        ###
+
+        ###
+
+class PersonalClient
+    ###
+    Client 
+    ###
 
 class PersonalScope
     ###
