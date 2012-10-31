@@ -39,14 +39,14 @@ class PersonalApp
         ###
         Get the URL for sending a user to the authorization page
 
-        options:
-            redirect_uri: string - The callback URL that the user will return to after authorization (required)
-            scope: PersonalScope - Object representing the scope for which you are requesting authorization (required)
-            update: boolean - specifies if the selection UI dialog should be presented even if the 3rd party already has access to the requested resource(default: true)
+            options:
+                redirect_uri: string - The callback URL that the user will return to after authorization (required)
+                scope: PersonalScope - Object representing the scope for which you are requesting authorization (required)
+                update: boolean - specifies if the selection UI dialog should be presented even if the 3rd party already has access to the requested resource(default: true)
 
-        returns an object containing
-            url: string - a formatted URL string (same formatted output as url.format() - see http://nodejs.org/api/url.html) 
-            state: the state parameter in the redirect_uri
+            returns an object containing
+                url: string - a formatted URL string (same formatted output as url.format() - see http://nodejs.org/api/url.html) 
+                state: the state parameter in the redirect_uri
         ###
 
         #add state param to redirect uri for the securitys
@@ -74,16 +74,17 @@ class PersonalApp
     get_access_token_auth: (args, callback) ->
         ###
         Get the access token for Personal API access using authorization code flow
-        args:
-            code: string - code returned in querystring of callback url (required)
-            state: string - state parameter return from query string of callback url (required)
-            redirect_uri: redirect_uri from authorization request (required)
-        callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
         
-        returns a promise whose resolution value is an object with the following properties
-            access_token: string - currently valid access token
-            refresh_token: string - token that may be used to refresh access token
-            expiration: date - time at which access token needs to be refreshed
+            args:
+                code: string - code returned in querystring of callback url (required)
+                state: string - state parameter return from query string of callback url (required)
+                redirect_uri: redirect_uri from authorization request (required)
+            callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
+        
+            returns a promise whose resolution value is an object with the following properties
+                access_token: string - currently valid access token
+                refresh_token: string - token that may be used to refresh access token
+                expiration: date - time at which access token needs to be refreshed
         ###
 
         deferred = q.defer()
@@ -146,10 +147,12 @@ class PersonalClient
 
     constructor: (access_options) ->
         ###
-        access_options:
-            access_token:
-            refresh_token:
-            expiration: 
+        PersonalClient constructor
+
+            access_options:
+                access_token:
+                refresh_token:
+                expiration: 
         ###
 
 class PersonalScope
@@ -178,12 +181,13 @@ class PersonalScope
     constructor: (args) ->
         ###
         For literal scope (e.g., "read_0135,write_0136"), provide args.literal
+
         For cartesian product scope (e.g.,, (read,write)x(0135,0136)), provide args.permission and args.resources
 
-        args:
-            permissions: array of strings for permissions. Subset of ['read', 'write', 'create', 'grant'] (optional)
-            resources: array of strings for resources to request, e.g. ['contacts','message','access','<4 digit template id>']
-            literal: Either string in proper scope format (e.g., "read_0135,write_0135") or array of objects (e.g., [{read: '0135'},{write: '0136'}])"
+            args:
+                permissions: array of strings for permissions. Subset of ['read', 'write', 'create', 'grant'] (optional)
+                resources: array of strings for resources to request, e.g. ['contacts','message','access','<4 digit template id>']
+                literal: Either string in proper scope format (e.g., "read_0135,write_0135") or array of objects (e.g., [{read: '0135'},{write: '0136'}])"
         ###
         @_scope = {}
         for perm in _all_perms
@@ -196,9 +200,9 @@ class PersonalScope
         ###
         Adds one rule to permission scope by string
 
-        permission_string: String representation of rule (e.g., "read_0135")
+            permission_string: String representation of rule (e.g., "read_0135")
 
-        returns true upon success, false otherwise
+            returns true upon success, false otherwise
         ###
         [name,resource] = permission_string.split "_"
         return @add_permission name, resource
@@ -207,9 +211,9 @@ class PersonalScope
         ###
         Adds one rule to permission scope by name and resource
 
-        rule: Either string representation of rule (e.g., "read_0135") or object representation (e.g., {read: '0135'})
+            rule: Either string representation of rule (e.g., "read_0135") or object representation (e.g., {read: '0135'})
 
-        returns true upon success, false otherwise
+            returns true upon success, false otherwise
         ###
         if _is_valid_permission_rule name, resource
             @_scope[name].push resource
@@ -221,9 +225,9 @@ class PersonalScope
         ###
         For literal scope (e.g., "read_0135,write_0136"), provide args.literal
         
-        returns true if all permissions were successfully added, false if any permissions were invalid
+            rules: Either string in proper scope format (e.g., "read_0135,write_0135") or array of objects (e.g., [{read: '0135'},{write: '0136'}])"
         
-        rules: Either string in proper scope format (e.g., "read_0135,write_0135") or array of objects (e.g., [{read: '0135'},{write: '0136'}])"
+            returns true if all permissions were successfully added, false if any permissions were invalid
         ###
         to_return = true
         if Array.isArray rules
@@ -243,13 +247,15 @@ class PersonalScope
     add_perms_cprod: (args) ->
         ###
         Add cartesian product scope (e.g.,, (read,write)x(0135,0136))
-        args:
-            permissions: array of strings for permissions. Subset of ['read', 'write', 'create', 'grant']
-            resources: array of strings for resources to request, e.g. ['contacts','message','access','<4 digit template id>']
         
-        returns true if all permissions were successfully added, false if any permissions were invalid
+            args:
+                permissions: array of strings for permissions. Subset of ['read', 'write', 'create', 'grant']
+                resources: array of strings for resources to request, e.g. ['contacts','message','access','<4 digit template id>']
+        
+            returns true if all permissions were successfully added, false if any permissions were invalid
         
         Example:
+     
             pscope.add_perms_cprod({permissions: ['read','write'], resources: ['0135','contacts']})
             pscope.to_s() //"read_0135,read_contacts,write_0135,write_contacts"
         ###
@@ -276,19 +282,19 @@ class PersonalScope
 
     asArray: () ->
         ###
-        Returnss the permissions as an array of strings.  Each string is suitable for use in the OAuth flow
+        Returns the permissions as an array of strings.  Each string is suitable for use in the OAuth flow
         ###
         return @to_a()
 
     to_s: () ->
         ###
-        Returnss the permissions as a string in the format required for the Personal OAuth flow
+        Returns the permissions as a string in the format required for the Personal OAuth flow
         ###
         return @to_a().join()
 
     toString: () ->
         ###
-        Returnss the permissions as a string in the format required for the Personal OAuth flow
+        Returns the permissions as a string in the format required for the Personal OAuth flow
         ###
         return @to_s()
 
@@ -305,14 +311,14 @@ connect_curr_req_url = do ->
 
 PersonalConnectOptions = (options) ->
     ###
-    #Add all options to the connect/express options for the Personal library
-    #
-    #options:
-    #   client_id:
-    #   client_secret:
-    #   scope:
-    #   update: 
-    #   sandbox:
+    Add all options to the connect/express options for the Personal library
+    
+        options:
+           client_id:
+           client_secret:
+           scope:
+           update: 
+           sandbox:
     ###
     connect_opts[key] = val for key,val of options
 
