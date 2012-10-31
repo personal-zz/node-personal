@@ -38,38 +38,24 @@ MIT License
 #### Instance Methods          
       
 ##### <a name="constructor">constructor(config)</a>
-config:
-    * client_id: string - <client id> (required)
-    * client_secret: string - <client secret> (required)
-    * sandbox: boolean - use sandbox if true and production if false (default: false)
 
       
 ##### <a name="get_auth_request_url">get\_auth\_request\_url(options)</a>
-Get the URL for sending a user to the authorization page
-
-options:
-    redirect_uri: string - The callback URL that the user will return to after authorization (required)
-    scope: PersonalScope - Object representing the scope for which you are requesting authorization (required)
-    update: boolean - specifies if the selection UI dialog should be presented even if the 3rd party already has access to the requested resource(default: true)
-
-returns an object containing
-    url: string - a formatted URL string (same formatted output as url.format() - see http://nodejs.org/api/url.html) 
-    state: the state parameter in the redirect_uri
 
       
 ##### <a name="get_access_token_auth">get\_access\_token\_auth(args, callback)</a>
 Get the access token for Personal API access using authorization code flow
 args:
-    * code: string - code returned in querystring of callback url (required)
-    * state: string - state parameter return from query string of callback url (required)
-    * redirect_uri: redirect_uri from authorization request (required)
-callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
-
-returns a promise whose resolution value is an object with the following properties
-    * access_token: string - currently valid access token
-    * refresh_token: string - token that may be used to refresh access token
-    * expiration: date - time at which access token needs to be refreshed
-
+            * code: string - code returned in querystring of callback url (required)
+            * state: string - state parameter return from query string of callback url (required)
+            * redirect_uri: redirect_uri from authorization request (required)
+        callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
+        
+        returns a promise whose resolution value is an object with the following properties
+            * access_token: string - currently valid access token
+            * refresh_token: string - token that may be used to refresh access token
+            * expiration: date - time at which access token needs to be refreshed
+        
       
     
     
