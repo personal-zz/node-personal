@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "description": "Library for connecting to Personal API using Node.js",
   "main": "index.js",
-  "dependencies": {},
+  "dependencies": {
+    "q": "0.x.x"
+  },
   "devDependencies": {
     "mocha": "1.x.x",
     "should": "1.x.x"
