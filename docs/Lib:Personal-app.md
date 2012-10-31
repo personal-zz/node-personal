@@ -21,9 +21,9 @@
 
 
 
-  # Personal Node.js Library
-#
-# MIT License
+  Personal Node.js Library
+
+MIT License
 
 
 
@@ -39,9 +39,9 @@
       
 ##### <a name="constructor">constructor(config)</a>
 config:
-    client_id: string - <client id> (required)
-    client_secret: string - <client secret> (required)
-    sandbox: boolean - use sandbox if true and production if false (default: false)
+    * client_id: string - <client id> (required)
+    * client_secret: string - <client secret> (required)
+    * sandbox: boolean - use sandbox if true and production if false (default: false)
 
       
 ##### <a name="get_auth_request_url">get\_auth\_request\_url(options)</a>
@@ -60,15 +60,15 @@ returns an object containing
 ##### <a name="get_access_token_auth">get\_access\_token\_auth(args, callback)</a>
 Get the access token for Personal API access using authorization code flow
 args:
-    code: string - code returned in querystring of callback url (required)
-    state: string - state parameter return from query string of callback url (required)
-    redirect_uri: redirect_uri from authorization request (required)
+    * code: string - code returned in querystring of callback url (required)
+    * state: string - state parameter return from query string of callback url (required)
+    * redirect_uri: redirect_uri from authorization request (required)
 callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
 
 returns a promise whose resolution value is an object with the following properties
-    access_token: string - currently valid access token
-    refresh_token: string - token that may be used to refresh access token
-    expiration: date - time at which access token needs to be refreshed
+    * access_token: string - currently valid access token
+    * refresh_token: string - token that may be used to refresh access token
+    * expiration: date - time at which access token needs to be refreshed
 
       
     

@@ -1,7 +1,7 @@
 ###
-# Personal Node.js Library
-#
-# MIT License
+Personal Node.js Library
+
+MIT License
 ###
 
 q = require "q"
@@ -20,15 +20,17 @@ code_regex.compile code_regex
 #Stuff for the standalone use case (used by express/connect functionality)
 class PersonalApp
     ###
+    
     PersonalApp is the central class to the library.  Instantiate it to access the Personal API.
+    
     ###
     
     constructor: (config) ->
         ###
         config:
-            client_id: string - <client id> (required)
-            client_secret: string - <client secret> (required)
-            sandbox: boolean - use sandbox if true and production if false (default: false)
+            * client_id: string - <client id> (required)
+            * client_secret: string - <client secret> (required)
+            * sandbox: boolean - use sandbox if true and production if false (default: false)
         ###
         @_config = config
         @_config.hostname = "#{if config.sandbox then "api-sandbox" else "api"}.personal.com"
@@ -73,15 +75,15 @@ class PersonalApp
         ###
         Get the access token for Personal API access using authorization code flow
         args:
-            code: string - code returned in querystring of callback url (required)
-            state: string - state parameter return from query string of callback url (required)
-            redirect_uri: redirect_uri from authorization request (required)
+            * code: string - code returned in querystring of callback url (required)
+            * state: string - state parameter return from query string of callback url (required)
+            * redirect_uri: redirect_uri from authorization request (required)
         callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
         
         returns a promise whose resolution value is an object with the following properties
-            access_token: string - currently valid access token
-            refresh_token: string - token that may be used to refresh access token
-            expiration: date - time at which access token needs to be refreshed
+            * access_token: string - currently valid access token
+            * refresh_token: string - token that may be used to refresh access token
+            * expiration: date - time at which access token needs to be refreshed
         ###
 
         deferred = q.defer()
