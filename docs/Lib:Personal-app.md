@@ -45,7 +45,8 @@ MIT License
       
 ##### <a name="get_access_token_auth">get\_access\_token\_auth(args, callback)</a>
 Get the access token for Personal API access using authorization code flow
-args:
+
+        args:
             * code: string - code returned in querystring of callback url (required)
             * state: string - state parameter return from query string of callback url (required)
             * redirect_uri: redirect_uri from authorization request (required)

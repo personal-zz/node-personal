@@ -69,7 +69,8 @@ class PersonalApp
     get_access_token_auth: (args, callback) ->
         ###
 Get the access token for Personal API access using authorization code flow
-args:
+
+        args:
             * code: string - code returned in querystring of callback url (required)
             * state: string - state parameter return from query string of callback url (required)
             * redirect_uri: redirect_uri from authorization request (required)
