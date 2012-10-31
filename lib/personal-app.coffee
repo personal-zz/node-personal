@@ -27,10 +27,10 @@ class PersonalApp
         ###
         PersonalApp constructor
         
-        config:
-            client_id: string - <client id> (required)
-            client_secret: string - <client secret> (required)
-            sandbox: boolean - use sandbox if true and production if false (default: false)
+    config:
+        client_id: string - <client id> (required)
+        client_secret: string - <client secret> (required)
+        sandbox: boolean - use sandbox if true and production if false (default: false)
         ###
         @_config = config
         @_config.hostname = "#{if config.sandbox then "api-sandbox" else "api"}.personal.com"
