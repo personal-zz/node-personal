@@ -38,13 +38,13 @@ MIT License
 #### Instance Methods          
       
 ##### <a name="constructor">constructor(config)</a>
-    PersonalApp constructor
-    
-config:
-    client_id: string - <client id> (required)
-    client_secret: string - <client secret> (required)
-    sandbox: boolean - use sandbox if true and production if false (default: false)
-    
+PersonalApp constructor
+
+    config:
+        client_id: string - <client id> (required)
+        client_secret: string - <client secret> (required)
+        sandbox: boolean - use sandbox if true and production if false (default: false)
+
       
 ##### <a name="get_auth_request_url">get\_auth\_request\_url(options)</a>
 Get the URL for sending a user to the authorization page
