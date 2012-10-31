@@ -1,4 +1,4 @@
-PersonalScope = require("../index").PersonalScope
+PersonalScope = require("../index").Scope
 require "should"
 
 _are_colls_equiv = (arr1, arr2) ->
