@@ -1,5 +1,5 @@
 ###
-Personal Node.js Library
+#Personal Node.js Library
 
 MIT License
 ###
@@ -17,33 +17,38 @@ oauth_proto = "https"
 code_regex = /^[a-z0-9]{20}$/gi
 code_regex.compile code_regex
 
-###
-Provides the facilities to use the Personal API outside the request/response paradigm
-###
+#Stuff for the standalone use case (used by express/connect functionality)
 class PersonalApp
     ###
-    @param config [Object] configuration options for the app
-    @option config [String] client_id <client id> (required)
-    @option config [String] client_secret <client secret> (required)
-    @option config [Boolean] sandbox use sandbox if true and production if false (default: false)
+    PersonalApp is the central class to the library.  Instantiate it to access the Personal API.
     ###
+    
     constructor: (config) ->
+        ###
+        PersonalApp constructor
+        
+        config:
+            client_id: string - <client id> (required)
+            client_secret: string - <client secret> (required)
+            sandbox: boolean - use sandbox if true and production if false (default: false)
+        ###
         @_config = config
         @_config.hostname = "#{if config.sandbox then "api-sandbox" else "api"}.personal.com"
     
-    ###
-    Get the URL for sending a user to the authorization page
-
-    @param options [Object]
-    @option options [String] redirect_uri The callback URL that the user will return to after authorization (required)
-    @option options [PersonalScope] scope Object representing the scope for which you are requesting authorization (required)
-    @option options [Boolean] update specifies whether the authorization UI dialog is presented when the app already has access to the  resource(default: true)
-
-    returns an object containing
-        url: string - a formatted URL string (same formatted output as url.format() - see http://nodejs.org/api/url.html) 
-        state: the state parameter in the redirect_uri
-    ###
     get_auth_request_url: (options) ->
+        ###
+        Get the URL for sending a user to the authorization page
+
+        options:
+            redirect_uri: string - The callback URL that the user will return to after authorization (required)
+            scope: PersonalScope - Object representing the scope for which you are requesting authorization (required)
+            update: boolean - specifies if the selection UI dialog should be presented even if the 3rd party already has access to the requested resource(default: true)
+
+        returns an object containing
+            url: string - a formatted URL string (same formatted output as url.format() - see http://nodejs.org/api/url.html) 
+            state: the state parameter in the redirect_uri
+        ###
+
         #add state param to redirect uri for the securitys
         state_param = crypto.randomBytes(32).toString('hex')
         redir_url_obj = url.parse options.redirect_uri, true
@@ -68,18 +73,17 @@ class PersonalApp
 
     get_access_token_auth: (args, callback) ->
         ###
-Get the access token for Personal API access using authorization code flow
-
+        Get the access token for Personal API access using authorization code flow
         args:
-            * code: string - code returned in querystring of callback url (required)
-            * state: string - state parameter return from query string of callback url (required)
-            * redirect_uri: redirect_uri from authorization request (required)
+            code: string - code returned in querystring of callback url (required)
+            state: string - state parameter return from query string of callback url (required)
+            redirect_uri: redirect_uri from authorization request (required)
         callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
         
         returns a promise whose resolution value is an object with the following properties
-            * access_token: string - currently valid access token
-            * refresh_token: string - token that may be used to refresh access token
-            * expiration: date - time at which access token needs to be refreshed
+            access_token: string - currently valid access token
+            refresh_token: string - token that may be used to refresh access token
+            expiration: date - time at which access token needs to be refreshed
         ###
 
         deferred = q.defer()
