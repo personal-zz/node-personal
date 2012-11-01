@@ -84,13 +84,34 @@ Get the access token for Personal API access using authorization code flow
     
 #### Instance Methods          
       
-##### <a name="constructor">constructor(access_options)</a>
+##### <a name="constructor">constructor(@access_options)</a>
 PersonalClient constructor
 
     access_options:
-        access_token:
-        refresh_token:
-        expiration: 
+        access_token: string - access token from oauth
+        refresh_token: string - refresh token from oauth
+        expiration: date - time at which access token expires
+        sandbox: boolean - Whether to use api-sandbox (default: false)
+
+      
+##### <a name="refresh">refresh(callback)</a>
+Performs a refresh on the access token.  Generally PersonalClient will take care of this for you, but this is provided in case manual refresh is desired
+    
+    callback: function - form of function(error){}, called when refresh is complete.  error is undefined on success (optional)
+
+    returns a promise object
+
+      
+##### <a name="request">request(options, callback)</a>
+GET from the Personal API
+
+    options: 
+        path: string - everything after "/api/v1" in the path (required)
+        method: string - "GET" "PUT" "POST" or "DELETE" (required)
+        data: object - javascript object to send (optional)
+    callback: function(err, data){} (optional)
+
+    return a promise containing the parsed object returned from the server
 
       
     
@@ -99,6 +120,7 @@ PersonalClient constructor
 ### <a name="PersonalScope">[PersonalScope](PersonalScope)</a>
     
     Define the scope you need for authorization code OAuth flow
+
 
     
     
@@ -190,9 +212,42 @@ Add all options to the connect/express options for the Personal library
 
   
 ### <a name="PersonalHelpers">PersonalHelpers(app)</a>
+Provides helpers for Express views
+
+To use:
+
+    express = require("express");
+    personal = require("personal");
+    app = express();
+    personal.Helpers(app);
+
+Helpers:
+
+    auth_req_url() - provides the authorization request URL for starting the OAuth flow
 
   
 ### <a name="PersonalMiddleware">PersonalMiddleware(req, res, next)</a>
+Connect middleware for using the Personal API
+
+To use (connect):
+    
+    example
+
+To use (express):
+    
+    express = require("express");
+    personal = require("node-personal");
+    personal.Options({<see PersonalConnectOptions>});
+    app = express()
+    app.configure(function(){
+        //various configuration
+        express.use(express.session(<config>));
+        express.use(personal.Middleware);
+    })
+
+req.session.personal.req_url will now have the appropriate URL for sending users to the authorization page
+
+Once users return from the authorization page, req.personal.client will be a working PersonalClient
 
   
 
