@@ -153,18 +153,55 @@ class PersonalApp
 
 class PersonalClient
     ###
-    Client 
+    Client for making calls to personal api 
+
     ###
 
-    constructor: (access_options) ->
+    constructor: (@access_options) ->
         ###
         PersonalClient constructor
 
             access_options:
-                access_token:
-                refresh_token:
-                expiration: 
+                access_token: string - access token from oauth
+                refresh_token: string - refresh token from oauth
+                expiration: date - time at which access token expires
+                sandbox: boolean - Whether to use api-sandbox (default: false)
         ###
+
+    refresh: (callback) ->
+        ###
+        Performs a refresh on the access token.  Generally PersonalClient will take care of this for you, but this is provided in case manual refresh is desired
+            
+            callback: function - form of function(error){}, called when refresh is complete.  error is undefined on success (optional)
+
+            returns a promise object
+        ###
+        deferred = q.defer()
+        #TODO: perform refresh POST
+        return deferred.promise
+
+    request: (options, callback) ->
+        ###
+        GET from the Personal API
+
+            options: 
+                path: string - everything after "/api/v1" in the path (required)
+                method: string - "GET" "PUT" "POST" or "DELETE" (required)
+                data: object - javascript object to send (optional)
+            callback: function(err, data){} (optional)
+
+            return a promise containing the parsed object returned from the server
+        ###
+        deferred = q.defer()
+        do_request = (options) ->
+            #TODO: perform request
+        if @access_options.expiration < Date.now()
+            refresh().then ()-> 
+                do_request(options)
+            , (err) -> deferred.reject(err)
+        else
+            do_request options
+        return deferred.promise
 
 class PersonalScope
     ###
@@ -342,10 +379,47 @@ PersonalConnectOptions = (options) ->
     connect_opts.set(key,val) for key,val of options
 
 PersonalHelpers = (app) ->
+    ###
+    Provides helpers for Express views
+
+    To use:
+
+        express = require("express");
+        personal = require("personal");
+        app = express();
+        personal.Helpers(app);
+
+    Helpers:
+
+        auth_req_url() - provides the authorization request URL for starting the OAuth flow
+    ###
     app.locals
         auth_req_url: -> return connect_curr_req_url.get()
             
 PersonalMiddleware = (req, res, next) ->
+    ###
+    Connect middleware for using the Personal API
+
+    To use (connect):
+        
+        example
+
+    To use (express):
+        
+        express = require("express");
+        personal = require("node-personal");
+        personal.Options({<see PersonalConnectOptions>});
+        app = express()
+        app.configure(function(){
+            //various configuration
+            express.use(express.session(<config>));
+            express.use(personal.Middleware);
+        })
+
+    req.session.personal.req_url will now have the appropriate URL for sending users to the authorization page
+
+    Once users return from the authorization page, req.personal.client will be a working PersonalClient
+    ###
     #put logout fn in the request
     req.personal =
         logout: () ->
