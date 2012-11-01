@@ -31,6 +31,22 @@ describe "Personal Connect/Express Integration", () ->
             host: "localhost"
         protocol: "https"
         url: "/"
+    describe "PersonalOptions", () ->
+        it "should merge new key/values into itself", (done) ->
+            app = 
+                locals: (obj) ->
+                    app.locals[key] = val for key,val of obj
+            helpers = PersonalHelpers(app)
+
+            PersonalOpt client_id: "somethingelse"
+            req = {}
+            req[key] = val for key,val of req_temp
+            next = (err) ->
+                PersonalOpt client_id: "clientid"
+                if err? then return done(err)
+                url_obj = url.parse app.locals.auth_req_url(), true
+                if url_obj.query.client_id == "somethingelse" then done() else done(new Error "Option merge failed")
+            PersonalMid req, {}, next
     describe "PersonalMiddleware", () ->
         it "should create session.personal if it doesn't exist", (done) ->
             req = {}

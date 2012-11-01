@@ -1,4 +1,5 @@
 ###
+
 #Personal Node.js Library
 
 MIT License
@@ -6,6 +7,7 @@ MIT License
 
 q = require "q"
 url = require "url"
+http = require "http" #for unit tests ONLY
 https = require "https"
 crypto = require "crypto"
 querystring = require "querystring"
@@ -13,6 +15,9 @@ querystring = require "querystring"
 oauth_req_path = "/oauth/authorize"
 oauth_access_path = "/oauth/access_token"
 oauth_proto = "https" 
+test_proto = "http"
+test_hostname = "127.0.0.1"
+test_port = 7357
 
 code_regex = /^[a-z0-9]{20}$/gi
 code_regex.compile code_regex
@@ -20,7 +25,8 @@ code_regex.compile code_regex
 #Stuff for the standalone use case (used by express/connect functionality)
 class PersonalApp
     ###
-    PersonalApp is the central class to the library.  Instantiate it to access the Personal API.
+    PersonalApp is intended for a stand-alone (non-web server) app.  Instantiate it to access the Personal API.
+    
     ###
     
     constructor: (config) ->
@@ -34,7 +40,8 @@ class PersonalApp
         ###
         @_config = config
         @_config.hostname = "#{if config.sandbox then "api-sandbox" else "api"}.personal.com"
-    
+        #if config.test == true then test_proto and test_hostname will be used
+
     get_auth_request_url: (options) ->
         ###
         Get the URL for sending a user to the authorization page
@@ -105,29 +112,33 @@ class PersonalApp
         post_data = querystring.stringify
             grant_type: "authorization_code"
             code: args.code
-            client_id: @_options.client_id
-            client_secret: @_options.client_secret
+            client_id: @_config.client_id
+            client_secret: @_config.client_secret
             redirect_uri: args.redirect_uri
         https_opts = 
-            hostname: @_config.hostname
+            hostname: if @_config.test then test_hostname else @_config.hostname
+            port: test_port if @_config.test
             path: oauth_access_path
             method: "POST"
             rejectUnauthorized: true
             headers:
                 "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
                 "Content-Length": post_data.length
-        req = https.request https_opts, (res) ->
+        proto_obj = if @_config.test then http else https
+        req = proto_obj.request https_opts, (res) ->
             res.setEncoding "utf8"
             json_res = ""
             res.on "data", (chunk) ->
                 json_res += chunk
             res.on "end", (chunk) ->
-                json_res += chunk
+                json_res += chunk if chunk?
                 res_obj = JSON.parse json_res
                 return_obj =
                     access_token: res_obj.access_token
                     refresh_token: res_obj.refresh_token
-                    expiration: new Date(Date.now() + expires_in*1000)
+                    expiration: new Date(Date.now() + res_obj.expires_in*1000)
+                callback null, return_obj if callback?
+                deferred.resolve return_obj
 
         req.on "error", (e) ->
             if callback? then callback(e)
@@ -157,7 +168,9 @@ class PersonalClient
 
 class PersonalScope
     ###
+    
     Define the scope you need for authorization code OAuth flow
+    
     ###
     
     #"static" vars
@@ -299,9 +312,15 @@ class PersonalScope
         return @to_s()
 
 #Stuff for the connect/express use case
-connect_opts = 
-    update: true
-    sandbox: false
+connect_opts = do ->
+    _opts =
+        update: true
+        sandbox: false
+    ret_val =
+        get: (key) -> if key? then return _opts[key] else return _opts
+        set: (key,val) -> 
+            _opts[key] = val
+            return _opts
 
 connect_curr_req_url = do ->
     _url = "init_val"
@@ -320,7 +339,7 @@ PersonalConnectOptions = (options) ->
            update: 
            sandbox:
     ###
-    connect_opts[key] = val for key,val of options
+    connect_opts.set(key,val) for key,val of options
 
 PersonalHelpers = (app) ->
     app.locals
@@ -346,7 +365,7 @@ PersonalMiddleware = (req, res, next) ->
             refresh_token: sess.refresh_token
             expiration: sess.expiration
         return next()
-    app = new PersonalApp connect_opts
+    app = new PersonalApp connect_opts.get()
 
     #we are at the callback url
     if req.query.code? and req.query.state? and req.query.personal?
@@ -355,28 +374,32 @@ PersonalMiddleware = (req, res, next) ->
             promise = app.get_access_token_auth
                 code: req.query.code
                 state: req.query.state
-                redirect_url: sess.redirect_url
+                redirect_uri: sess.redirect_uri
             promise.then (access_obj) ->
                 sess[key] = val for key,val of access_obj
                 sess.client = new PersonalClient access_obj
+                sess.state = sess.redirect_uri = null
                 next()
             ,(err) ->
                 next(err)
             return
     
     #we need to create the url for login and auth
-    new_redir_uri = url.parse "#{req.protocol}://#{req.headers.host}#{req.url}", true
-    new_redir_uri.search = ""
-    new_redir_uri.query.personal = true
-    auth_req_obj = app.get_auth_request_url
-        scope: connect_opts.scope
-        update: connect_opts.update
-        sandbox: connect_opts.sandbox
-        redirect_uri: url.format new_redir_uri
-    connect_curr_req_url.set auth_req_obj.url
-    #    console.log connect_curr_req
-    sess.state = auth_req_obj.state
-    sess.redirect_uri = auth_req_obj.redirect_uri
+    if (not sess.state?) or (not sess.redirect_uri?)
+        new_redir_uri = url.parse "#{req.protocol}://#{req.headers.host}#{req.url}", true
+        new_redir_uri.search = ""
+        new_redir_uri.query.personal = true
+        auth_req_obj = app.get_auth_request_url
+            scope: connect_opts.get "scope"
+            update: connect_opts.get "update"
+            sandbox: connect_opts.get "sandbox"
+            redirect_uri: url.format new_redir_uri
+        connect_curr_req_url.set auth_req_obj.url
+        sess.req_url = auth_req_obj.url
+        sess.state = auth_req_obj.state
+        sess.redirect_uri = auth_req_obj.redirect_uri
+    else
+        connect_curr_req_url.set sess.req_url
     next()
 
 #export stuff

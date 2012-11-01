@@ -1,7 +1,9 @@
 PersonalScope = require("../index").Scope
 PersonalApp = require("../index").App
-url = require "url"
 crypto = require "crypto"
+qs = require "querystring"
+http = require "http"
+url = require "url"
 require "should"
 
 _are_colls_equiv = (arr1, arr2) ->
@@ -24,6 +26,7 @@ describe "PersonalApp", () ->
 
     sample_state = crypto.randomBytes(32).toString('hex')
     sample_code = crypto.randomBytes(10).toString('hex')
+    sample_redirect_uri = "http://localhost"
 
     describe "#get_auth_request_url", () ->
         auth_req_obj = app.get_auth_request_url
@@ -103,3 +106,44 @@ describe "PersonalApp", () ->
                 state: sample_state
                 , (err, data) ->
                     if err? then done() else done(new Error "Rejection not accomplished via callback")
+        it "should return the proper access object", (done) ->
+            soln = 
+                access_token: "sampleaccesstoken"
+                refresh_token: "samplerefreshtoken"
+            test_app = new PersonalApp
+                client_id: "clientid"
+                client_secret: "clientsecret"
+                test: true
+            test_srv = http.createServer (req,res) ->
+                body = ""
+                if req.method != "POST"
+                    test_srv.close()
+                    done(new Error "POST not being used")
+                req.on "data", (chunk) ->
+                    body += chunk if chunk?
+                req.on "end", ->
+                    post_obj = qs.parse body
+                    if !post_obj.grant_type? or post_obj.grant_type != "authorization_code" then done(new Error "Wrong grant type provided")
+                    if !post_obj.code? or post_obj.code != sample_code then done(new Error "Wrong code provided")
+                    if !post_obj.redirect_uri? or post_obj.redirect_uri != sample_redirect_uri then done(new Error "Wrong redirect URI")
+                    if !post_obj.client_id? or post_obj.client_id != "clientid" then done(new Error "Wrong client_id")
+                    if !post_obj.client_secret? or post_obj.client_secret != "clientsecret" then done(new Error "Wrong client secret")
+                    res.writeHead 200, {'Content-Type': "application/json"}
+                    res.end JSON.stringify 
+                        access_token: soln.access_token
+                        refresh_token: soln.refresh_token
+                        expires_in: 3600
+            test_srv.listen 7357
+            promise = test_app.get_access_token_auth
+                code: sample_code
+                state: sample_state
+                redirect_uri: sample_redirect_uri
+            promise.then (data) ->
+                if data.access_token == soln.access_token and data.refresh_token == data.refresh_token and data.expiration > Date.now()
+                    done()
+                else
+                    console.err "access object: ", data
+                    done(new Error "access object was not correct")
+            , (err) ->
+                test_srv.close()
+                done(err)
