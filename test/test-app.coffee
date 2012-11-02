@@ -75,23 +75,6 @@ describe "PersonalApp", () ->
                 done(new Error "Did not reject invalid code")
             , (err) ->
                 done()
-        it "should reject empty state", (done) ->
-            promise = app.get_access_token_auth
-                code: sample_code
-                redirect_uri: "http://localhost"
-            promise.then (data) ->
-                done(new Error "Did not reject empty state")
-            , (err) ->
-                done()
-        it "should reject invalid state", (done) ->
-            promise = app.get_access_token_auth
-                state: "too short"
-                redirect_uri: "http://localhost"
-                code: sample_code
-            promise.then (data) ->
-                done(new Error "Did not reject invalid code")
-            , (err) ->
-                done()
         it "should reject empty redirect_uri", (done) ->
             promise = app.get_access_token_auth
                 code: sample_code

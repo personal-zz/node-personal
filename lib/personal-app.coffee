@@ -12,6 +12,7 @@ https = require "https"
 crypto = require "crypto"
 querystring = require "querystring"
 
+api_path_prefix = "/api/v1"
 oauth_req_path = "/oauth/authorize"
 oauth_access_path = "/oauth/access_token"
 oauth_proto = "https" 
@@ -83,9 +84,9 @@ class PersonalApp
         Get the access token for Personal API access using authorization code flow
         
             args:
-                code: string - code returned in querystring of callback url (required)
-                state: string - state parameter return from query string of callback url (required)
+                code: string - code returned in querystring of callback url (or refresh_token if refreshing) (required)
                 redirect_uri: redirect_uri from authorization request (required)
+                is_refresh: boolean - whether this is a token refresh (optional - default: false)
             callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
         
             returns a promise whose resolution value is an object with the following properties
@@ -99,8 +100,6 @@ class PersonalApp
         #check for issues
         rejection = "Authorization code not provided" if !args.code? 
         rejection = "Invalid authorization code" if !code_regex.test(args.code)     
-        rejection = "State parameter not provided" if !args.state? 
-        rejection = "Invalid state parameter" if args.state?.length != 64
         rejection = "Redirect URI not provided" if !args.redirect_uri?
         if rejection?.length > 0
             if callback? then callback(new Error rejection)
@@ -110,7 +109,7 @@ class PersonalApp
         #run post
         return_obj = {}
         post_data = querystring.stringify
-            grant_type: "authorization_code"
+            grant_type: if args.is_refresh == true then "refresh_token" else "authorization_code"
             code: args.code
             client_id: @_config.client_id
             client_secret: @_config.client_secret
@@ -137,7 +136,7 @@ class PersonalApp
                     access_token: res_obj.access_token
                     refresh_token: res_obj.refresh_token
                     expiration: new Date(Date.now() + res_obj.expires_in*1000)
-                callback null, return_obj if callback?
+                callback null, return_obj if callback? and typeof callback == 'function'
                 deferred.resolve return_obj
 
         req.on "error", (e) ->
@@ -147,8 +146,6 @@ class PersonalApp
         req.end()
         
         #run callback and return promise
-        if typeof callback == 'function'
-            callback(null, return_obj)
         return deferred.promise
 
 class PersonalClient
@@ -162,11 +159,20 @@ class PersonalClient
         PersonalClient constructor
 
             access_options:
+                client_id: string
+                client_secret: string
                 access_token: string - access token from oauth
                 refresh_token: string - refresh token from oauth
                 expiration: date - time at which access token expires
+                redirect_uri: redirect_uri used in original auth get
                 sandbox: boolean - Whether to use api-sandbox (default: false)
         ###
+        @access_options.hostname = "#{if @access_optionssandbox == true then 'api-sandbox' else 'api' }.personal.com"
+        if @access_optionsexpiration < new Date()
+            @refresh().then (data)->
+                return
+            ,(err) ->
+                console.error err
 
     refresh: (callback) ->
         ###
@@ -177,12 +183,22 @@ class PersonalClient
             returns a promise object
         ###
         deferred = q.defer()
-        #TODO: perform refresh POST
+        #perform refresh POST
+        app = new PersonalApp @access_options
+        app.get_access_token
+            code: @access_options.refresh_token
+            redirect_uri: @access_options.redirect_uri
+            is_refresh: true
+        .then (data) ->
+            @access_options[key] = val for key,val in data
+            deferred.resolve data
+        ,(err) ->
+            deferred.reject err
         return deferred.promise
 
     request: (options, callback) ->
         ###
-        GET from the Personal API
+        send request to the Personal API
 
             options: 
                 path: string - everything after "/api/v1" in the path (required)
@@ -194,7 +210,30 @@ class PersonalClient
         ###
         deferred = q.defer()
         do_request = (options) ->
-            #TODO: perform request
+            https_opts = 
+                hostname: if @access_options.test then test_hostname else @access_options.hostname
+                port: test_port if @access_options.test
+                path: "#{api_path_prefix}/#{options.path}?client_id=#{@access_options.client_id}"
+                method: options.method
+                headers:
+                    "Content-Type": "application/json"
+                    "Authorization": "Bearer #{@access_options.access_token}"
+            proto_obj = if @_config.test then http else https
+            req = proto_obj.request https_opts, (res) ->
+                json_res = ""
+                res.on "data", (chunk) ->
+                    json_res += chunk
+                res.on "end", (chunk) ->
+                    json_res += chunk if chunk?
+                    return_obj = JSON.parse json_res
+                    callback null, return_obj if callback? and typeof callback == 'function'
+                    deferred.resolve return_obj
+            req.on "error", (e) ->
+                if callback? then callback(e)
+                deferred.reject e
+            req.write(JSON.stringify data) if data?
+            req.end()
+
         if @access_options.expiration < Date.now()
             refresh().then ()-> 
                 do_request(options)
@@ -480,6 +519,7 @@ PersonalMiddleware = (req, res, next) ->
     next()
 
 #export stuff
+exports.Client = PersonalClient
 exports.Options = PersonalConnectOptions
 exports.Helpers = PersonalHelpers
 exports.Middleware = PersonalMiddleware
