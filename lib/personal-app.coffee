@@ -451,17 +451,20 @@ PersonalMiddleware = (req, res, next) ->
                 redirect_uri: sess.redirect_uri
             promise.then (access_obj) ->
                 sess[key] = val for key,val of access_obj
-                sess.client = new PersonalClient access_obj
-                sess.state = sess.redirect_uri = null
+                req.personal.client = new PersonalClient access_obj
                 next()
             ,(err) ->
                 next(err)
+            promise.fin () ->
+                sess.state = sess.redirect_uri = null
+                #TODO: remove code, state, and personal from query (redirect)
             return
     
     #we need to create the url for login and auth
     if (not sess.state?) or (not sess.redirect_uri?)
         new_redir_uri = url.parse "#{req.protocol}://#{req.headers.host}#{req.url}", true
         new_redir_uri.search = ""
+        delete new_redir_uri.query.code
         new_redir_uri.query.personal = true
         auth_req_obj = app.get_auth_request_url
             scope: connect_opts.get "scope"
