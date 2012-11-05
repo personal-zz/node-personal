@@ -7,11 +7,13 @@ MIT License
 
 q = require "q"
 url = require "url"
+mime = require "mime"
 http = require "http" #for unit tests ONLY
 https = require "https"
 crypto = require "crypto"
 querystring = require "querystring"
 
+#TODO: convert the following to _<uppercase> format
 api_path_prefix = "/api/v1"
 oauth_req_path = "/oauth/authorize"
 oauth_access_path = "/oauth/access_token"
@@ -20,8 +22,13 @@ test_proto = "http"
 test_hostname = "127.0.0.1"
 test_port = 7357
 
+_BACKOFF_DELAY = 1000 #1s
+
 code_regex = /^[a-z0-9]{20}$/gi
 code_regex.compile code_regex
+
+_QPS_REGEX = /developer over qps/igm
+_QPS_REGEX.compile _QPS_REGEX
 
 #Stuff for the standalone use case (used by express/connect functionality)
 class PersonalApp
@@ -84,9 +91,12 @@ class PersonalApp
         Get the access token for Personal API access using authorization code flow
         
             args:
-                code: string - code returned in querystring of callback url (or refresh_token if refreshing) (required)
-                redirect_uri: redirect_uri from authorization request (required)
+                code: string - code returned in querystring of callback url (or refresh_token if refreshing) (required if is_refresh=false)
+                redirect_uri: redirect_uri from authorization request (required if is_refresh=false)
                 is_refresh: boolean - whether this is a token refresh (optional - default: false)
+                refresh_token: string - refresh token (required if is_refresh=true)
+                access_token: string - access token (required if is_refresh=true)
+
             callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
         
             returns a promise whose resolution value is an object with the following properties
@@ -98,9 +108,11 @@ class PersonalApp
         deferred = q.defer()
         
         #check for issues
-        rejection = "Authorization code not provided" if !args.code? 
-        rejection = "Invalid authorization code" if !code_regex.test(args.code)     
-        rejection = "Redirect URI not provided" if !args.redirect_uri?
+        rejection = "Authorization code not provided" if (!args.code?) and !args.is_refresh
+        rejection = "Invalid authorization code" if (!code_regex.test(args.code)) and !args.is_refresh
+        rejection = "Redirect URI not provided" if (!args.redirect_uri?) and !args.is_refresh
+        rejection = "Refresh token not provided" if (!args.refresh_token?) and args.is_refresh == true
+        rejection = "Access token not provided" if (!args.access_token?) and args.is_refresh == true
         if rejection?.length > 0
             if callback? then callback(new Error rejection)
             deferred.reject new Error(rejection)
@@ -108,12 +120,11 @@ class PersonalApp
 
         #run post
         return_obj = {}
-        post_data = querystring.stringify
+        #set settings whether this is refresh or not
+        post_obj = 
             grant_type: if args.is_refresh == true then "refresh_token" else "authorization_code"
-            code: args.code
             client_id: @_config.client_id
             client_secret: @_config.client_secret
-            redirect_uri: args.redirect_uri
         https_opts = 
             hostname: if @_config.test then test_hostname else @_config.hostname
             port: test_port if @_config.test
@@ -122,15 +133,25 @@ class PersonalApp
             rejectUnauthorized: true
             headers:
                 "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-                "Content-Length": post_data.length
+        #account for difference between refresh and normal
+        if args.is_refresh == true
+            post_obj.refresh_token = args.refresh_token
+            https_opts.headers["Authorization"] = "Bearer #{args.access_token}" 
+        else 
+            post_obj.code = args.code
+            post_obj.redirect_uri = args.redirect_uri
+        post_data = querystring.stringify post_obj
+        https_opts.headers["Content-Length"] = post_data.length
         proto_obj = if @_config.test then http else https
         req = proto_obj.request https_opts, (res) ->
             res.setEncoding "utf8"
             json_res = ""
             res.on "data", (chunk) ->
                 json_res += chunk
-            res.on "end", (chunk) ->
-                json_res += chunk if chunk?
+            res.on "end", () ->
+                if @statusCode == 403 and _QPS_REGEX.test(json_res)
+                    return setTimeout @get_access_token_auth, _BACKOFF_DELAY, args, callback
+                if @statusCode != 200 then return deferred.reject new Error("Status code #{@statusCode} - #{json_res}")
                 res_obj = JSON.parse json_res
                 return_obj =
                     access_token: res_obj.access_token
@@ -167,12 +188,29 @@ class PersonalClient
                 redirect_uri: redirect_uri used in original auth get
                 sandbox: boolean - Whether to use api-sandbox (default: false)
         ###
-        @access_options.hostname = "#{if @access_optionssandbox == true then 'api-sandbox' else 'api' }.personal.com"
-        if @access_optionsexpiration < new Date()
-            @refresh().then (data)->
-                return
-            ,(err) ->
-                console.error err
+        @access_options.hostname = "#{if @access_options.sandbox == true then 'api-sandbox' else 'api' }.personal.com"
+        @_reg_events = 
+            refresh_token: []
+
+    bind: (event_name, callback) ->
+        ###
+        Register a callback to run when certain events happen
+
+            event_name: string - Name of events
+            callback: string - function(data){}
+
+        Valid events and data:
+            "refresh_token": Called when token is refreshed.  Data is:
+                access_token: access token
+                refresh_token: refresh_token
+                expiration: Date of expiration
+        ###
+        if @_reg_events[event_name]? and typeof callback == 'function' then @_reg_events[event_name].push callback
+        return true
+
+    _fire_event: (event_name, data) ->
+        if @_reg_events[event_name]?
+            callback(data) for callback in @_reg_events[event_name]
 
     refresh: (callback) ->
         ###
@@ -185,13 +223,19 @@ class PersonalClient
         deferred = q.defer()
         #perform refresh POST
         app = new PersonalApp @access_options
-        app.get_access_token
-            code: @access_options.refresh_token
+        app.get_access_token_auth
+            refresh_token: @access_options.refresh_token
+            access_token: @access_options.access_token
             redirect_uri: @access_options.redirect_uri
             is_refresh: true
-        .then (data) ->
-            @access_options[key] = val for key,val in data
-            deferred.resolve data
+        .then (data) =>
+            try
+                for own key,val of data
+                    @access_options[key] = val 
+                @_fire_event "refresh_token", @access_options
+                deferred.resolve data
+            catch e
+                deferred.reject e
         ,(err) ->
             deferred.reject err
         return deferred.promise
@@ -209,7 +253,7 @@ class PersonalClient
             return a promise containing the parsed object returned from the server
         ###
         deferred = q.defer()
-        do_request = (options) ->
+        do_request = (options) =>
             https_opts = 
                 hostname: if @access_options.test then test_hostname else @access_options.hostname
                 port: test_port if @access_options.test
@@ -218,29 +262,82 @@ class PersonalClient
                 headers:
                     "Content-Type": "application/json"
                     "Authorization": "Bearer #{@access_options.access_token}"
-            proto_obj = if @_config.test then http else https
+                    "Secure-Password": @access_options.client_secret
+            proto_obj = if @access_options.test then http else https
             req = proto_obj.request https_opts, (res) ->
                 json_res = ""
                 res.on "data", (chunk) ->
                     json_res += chunk
-                res.on "end", (chunk) ->
-                    json_res += chunk if chunk?
+                res.on "end", () ->
+                    if @statusCode == 403 and _QPS_REGEX.test(json_res)
+                        setTimeout @request, _BACKOFF_DELAY, options, callback
+                    if @statusCode != 200 then return deferred.reject new Error("status #{@statusCode}\t#{json_res}")
                     return_obj = JSON.parse json_res
                     callback null, return_obj if callback? and typeof callback == 'function'
                     deferred.resolve return_obj
             req.on "error", (e) ->
                 if callback? then callback(e)
                 deferred.reject e
-            req.write(JSON.stringify data) if data?
+            req.write(JSON.stringify options.data) if options.data?
             req.end()
 
         if @access_options.expiration < Date.now()
-            refresh().then ()-> 
+            @refresh().then ()-> 
                 do_request(options)
             , (err) -> deferred.reject(err)
         else
             do_request options
         return deferred.promise
+
+    upload_file: (gem_id, filename, buf) ->
+        deferred = q.defer()
+        console.log "Uploading #{filename}"
+        do_request = () =>
+            console.log "do_request upload #{filename}"
+            boundary_str = "----PersonalNodeBoundary#{crypto.randomBytes(32).toString('hex')}"
+            https_opts = 
+                hostname: if @access_options.test then test_hostname else @access_options.hostname
+                port: test_port if @access_options.test
+                path: "file?files[]=#{encodeURIComponent filename}&gem_id=#{encodeURIComponent gem_id}&client_id=#{@access_options.client_id}"
+                method: "POST"
+                headers:
+                    "Content-Type": "multipart/form-data; boundary=#{boundary_str}"
+                    "Authorization": "Bearer #{@access_options.access_token}"
+                    "Secure-Password": @access_options.client_secret
+            console.log https_opts
+            proto_obj = if @access_options.test then http else https
+            req = proto_obj.request https_opts, (res) ->
+                console.log "in req #{filename}"
+                json_res = ""
+                res.on "data", (chunk) ->
+                    json_res += chunk
+                res.on "end", () ->
+                    if @statusCode != 200 then return deferred.reject new Error("status #{@statusCode}\t#{json_res}")
+                    if @statusCode == 403 and _QPS_REGEX.test(json_res)
+                        setTimeout @request, _BACKOFF_DELAY, options, callback
+                    console.log "res.end #{filename}\t#{json_res}"
+                    return_obj = JSON.parse json_res
+                    callback null, return_obj if callback? and typeof callback == 'function'
+                    deferred.resolve return_obj
+            req.on "error", (e) ->
+                if callback? then callback(e)
+                deferred.reject e
+            req.write "--#{boundary_str}\r\n"
+            req.write "Content-Disposition: form-data; name=\"fileUpload\"; filename=\"#{filename}\"\r\n"
+            req.write "Content-Type: #{mime.lookup filename}\r\n\r\n"
+            req.write buf
+            req.write "\r\n--#{boundary_str}--"
+            console.log "about to call req.end for #{filename}"
+            req.end()
+
+        if @access_options.expiration < Date.now()
+            @refresh().then ()-> 
+                do_request()
+            , (err) -> deferred.reject(err)
+        else
+            do_request()
+        return deferred.promise
+
 
 class PersonalScope
     ###
@@ -474,9 +571,13 @@ PersonalMiddleware = (req, res, next) ->
     if sess.access_token? and sess.refresh_token? and sess.expiration?
         req.personal.logged_in = true
         req.personal.client = new PersonalClient
+            client_id: connect_opts.get "client_id"
+            client_secret: connect_opts.get "client_secret"
             access_token: sess.access_token
             refresh_token: sess.refresh_token
             expiration: sess.expiration
+            redirect_uri: sess.redirect_uri
+            sandbox: connect_opts.get "sandbox"
         return next()
     app = new PersonalApp connect_opts.get()
 
@@ -495,7 +596,7 @@ PersonalMiddleware = (req, res, next) ->
             ,(err) ->
                 next(err)
             promise.fin () ->
-                sess.state = sess.redirect_uri = null
+                sess.state = null
                 #TODO: remove code, state, and personal from query (redirect)
             return
     

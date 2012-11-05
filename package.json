@@ -4,7 +4,8 @@
   "description": "Library for connecting to Personal API using Node.js",
   "main": "index.js",
   "dependencies": {
-    "q": "0.x.x"
+    "q": "0.x.x",
+    "mime": "1.x.x"
   },
   "devDependencies": {
     "mocha": "1.x.x",
