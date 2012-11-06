@@ -185,10 +185,10 @@ class PersonalClient
                 access_token: string - access token from oauth
                 refresh_token: string - refresh token from oauth
                 expiration: date - time at which access token expires
-                redirect_uri: redirect_uri used in original auth get
                 sandbox: boolean - Whether to use api-sandbox (default: false)
         ###
         @access_options.hostname = "#{if @access_options.sandbox == true then 'api-sandbox' else 'api' }.personal.com"
+        @access_options.expiration = new Date(@access_options.expiration)
         @_reg_events = 
             refresh_token: []
 
@@ -226,12 +226,12 @@ class PersonalClient
         app.get_access_token_auth
             refresh_token: @access_options.refresh_token
             access_token: @access_options.access_token
-            redirect_uri: @access_options.redirect_uri
             is_refresh: true
         .then (data) =>
             try
                 for own key,val of data
                     @access_options[key] = val 
+                @access_options.expiration = new Date(@access_options.expiration)
                 @_fire_event "refresh_token", @access_options
                 deferred.resolve data
             catch e
@@ -291,45 +291,46 @@ class PersonalClient
 
     upload_file: (gem_id, filename, buf) ->
         deferred = q.defer()
-        console.log "Uploading #{filename}"
         do_request = () =>
-            console.log "do_request upload #{filename}"
-            boundary_str = "----PersonalNodeBoundary#{crypto.randomBytes(32).toString('hex')}"
-            https_opts = 
-                hostname: if @access_options.test then test_hostname else @access_options.hostname
-                port: test_port if @access_options.test
-                path: "file?files[]=#{encodeURIComponent filename}&gem_id=#{encodeURIComponent gem_id}&client_id=#{@access_options.client_id}"
-                method: "POST"
-                headers:
-                    "Content-Type": "multipart/form-data; boundary=#{boundary_str}"
-                    "Authorization": "Bearer #{@access_options.access_token}"
-                    "Secure-Password": @access_options.client_secret
-            console.log https_opts
-            proto_obj = if @access_options.test then http else https
-            req = proto_obj.request https_opts, (res) ->
-                console.log "in req #{filename}"
-                json_res = ""
-                res.on "data", (chunk) ->
-                    json_res += chunk
-                res.on "end", () ->
-                    if @statusCode != 200 then return deferred.reject new Error("status #{@statusCode}\t#{json_res}")
-                    if @statusCode == 403 and _QPS_REGEX.test(json_res)
-                        setTimeout @request, _BACKOFF_DELAY, options, callback
-                    console.log "res.end #{filename}\t#{json_res}"
-                    return_obj = JSON.parse json_res
-                    callback null, return_obj if callback? and typeof callback == 'function'
-                    deferred.resolve return_obj
-            req.on "error", (e) ->
-                if callback? then callback(e)
-                deferred.reject e
-            req.write "--#{boundary_str}\r\n"
-            req.write "Content-Disposition: form-data; name=\"fileUpload\"; filename=\"#{filename}\"\r\n"
-            req.write "Content-Type: #{mime.lookup filename}\r\n\r\n"
-            req.write buf
-            req.write "\r\n--#{boundary_str}--"
-            console.log "about to call req.end for #{filename}"
-            req.end()
-
+            try
+                #boundary_str = "----PersonalNodeBoundary#{crypto.randomBytes(32).toString('hex')}"
+                https_opts = 
+                    hostname: if @access_options.test then test_hostname else @access_options.hostname
+                    port: test_port if @access_options.test
+                    path: "/file?client_id=#{@access_options.client_id}&files[]=#{encodeURIComponent filename}&gem_id=#{encodeURIComponent gem_id}"
+                    method: "POST"
+                    headers:
+                        #"Content-Type": "multipart/form-data; boundary=#{boundary_str}"
+                        #"Content-Type": "application/octet-stream"
+                        "Content-Type": mime.lookup filename
+                        "Content-Length": buf.toString('hex').length/2
+                        #"Transfer-Encoding": "chunked"
+                        "Authorization": "Bearer #{@access_options.access_token}"
+                        "Secure-Password": @access_options.client_secret
+                proto_obj = if @access_options.test then http else https
+                req = proto_obj.request https_opts, (res) ->
+                    json_res = ""
+                    res.on "data", (chunk) ->
+                        json_res += chunk
+                    res.on "end", () ->
+                        if @statusCode == 403 and _QPS_REGEX.test(json_res)
+                            setTimeout @request, _BACKOFF_DELAY, options, callback
+                        if @statusCode != 200 then return deferred.reject new Error("status #{@statusCode}\t#{json_res}")
+                        return_obj = JSON.parse json_res
+                        callback null, return_obj if callback? and typeof callback == 'function'
+                        deferred.resolve return_obj
+                req.on "error", (e) ->
+                    if callback? then callback(e)
+                    deferred.reject e
+                #req.write "--#{boundary_str}\r\n"
+                #req.write "Content-Disposition: form-data; name=\"fileUpload\"; filename=\"#{filename}\"\r\n"
+                #req.write "Content-Type: #{mime.lookup filename}\r\n\r\n"
+                req.write buf
+                #req.write "\r\n--#{boundary_str}--"
+                req.end()
+            catch err
+                deferred.reject err
+    
         if @access_options.expiration < Date.now()
             @refresh().then ()-> 
                 do_request()
