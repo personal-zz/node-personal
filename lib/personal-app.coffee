@@ -22,7 +22,7 @@ test_proto = "http"
 test_hostname = "127.0.0.1"
 test_port = 7357
 
-_BACKOFF_DELAY = 1000 #1s
+_BACKOFF_DELAY = 2000 #2s
 
 code_regex = /^[a-z0-9]{20}$/gi
 code_regex.compile code_regex
@@ -314,7 +314,7 @@ class PersonalClient
                         json_res += chunk
                     res.on "end", () ->
                         if @statusCode == 403 and _QPS_REGEX.test(json_res)
-                            setTimeout @request, _BACKOFF_DELAY, options, callback
+                            setTimeout @upload_file, _BACKOFF_DELAY, gem_id, filename, buf
                         if @statusCode != 200 then return deferred.reject new Error("status #{@statusCode}\t#{json_res}")
                         return_obj = JSON.parse json_res
                         callback null, return_obj if callback? and typeof callback == 'function'
@@ -591,14 +591,24 @@ PersonalMiddleware = (req, res, next) ->
                 state: req.query.state
                 redirect_uri: sess.redirect_uri
             promise.then (access_obj) ->
-                sess[key] = val for key,val of access_obj
-                req.personal.client = new PersonalClient access_obj
+                for own key,val of access_obj
+                    sess[key] = val 
+                req.personal.client = new PersonalClient
+                    client_id: connect_opts.get "client_id"
+                    client_secret: connect_opts.get "client_secret"
+                    access_token: sess.access_token
+                    refresh_token: sess.refresh_token
+                    expiration: sess.expiration
+                    redirect_uri: sess.redirect_uri
+                    sandbox: connect_opts.get "sandbox"
+                req.personal.logged_in = true
                 next()
             ,(err) ->
                 next(err)
             promise.fin () ->
                 sess.state = null
                 #TODO: remove code, state, and personal from query (redirect)
+
             return
     
     #we need to create the url for login and auth
