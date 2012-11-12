@@ -14,21 +14,53 @@ crypto = require "crypto"
 querystring = require "querystring"
 
 #TODO: convert the following to _<uppercase> format
-api_path_prefix = "/api/v1"
-oauth_req_path = "/oauth/authorize"
-oauth_access_path = "/oauth/access_token"
-oauth_proto = "https" 
-test_proto = "http"
-test_hostname = "127.0.0.1"
-test_port = 7357
+_api_path_prefix = "/api/v1"
+_oauth_req_path = "/oauth/authorize"
+_oauth_access_path = "/oauth/access_token"
+_oauth_proto = "https" 
+_test_proto = "http"
+_test_hostname = "127.0.0.1"
+_test_port = 7357
 
 _BACKOFF_DELAY = 2000 #2s
 
-code_regex = /^[a-z0-9]{20}$/gi
-code_regex.compile code_regex
+_code_regex = /^[a-z0-9]{20}$/gi
+_code_regex.compile _code_regex
 
 _QPS_REGEX = /developer over qps/igm
 _QPS_REGEX.compile _QPS_REGEX
+
+#Helper fns
+_http_req = (opts, proto_obj, data, res_enc, callback) ->
+    deferred = q.defer()
+
+    _handle_err = (err) ->
+        if callback? then callback err
+        deferred.reject err
+
+    req = proto_obj.request opts, (res) ->
+        if res_enc? then res.setEncoding res_enc
+        json_res = ""
+        res.on "data", (chunk) ->
+            json_res += chunk
+        res.on "end", () ->
+            if @statusCode == 403 and _QPS_REGEX.test(json_res)
+                return setTimeout _http_req, _BACKOFF_DELAY, opts, proto_obj, res_enc, callback
+            if @statusCode != 200
+                return _handle_err new Error("status #{@statusCode}\t#{json_res}")
+            try
+                return_obj = JSON.parse json_res
+                callback null, return_obj if callback? and typeof callback == 'function'
+                deferred.resolve return_obj
+            catch e
+                _handle_err e
+
+    req.on "error", (e) ->
+        _handle_err e
+    req.write(data) if data?
+    req.end()
+    
+    return deferred.promise
 
 #Stuff for the standalone use case (used by express/connect functionality)
 class PersonalApp
@@ -48,7 +80,7 @@ class PersonalApp
         ###
         @_config = config
         @_config.hostname = "#{if config.sandbox then "api-sandbox" else "api"}.personal.com"
-        #if config.test == true then test_proto and test_hostname will be used
+        #if config.test == true then _test_proto and _test_hostname will be used
 
     get_auth_request_url: (options) ->
         ###
@@ -77,8 +109,8 @@ class PersonalApp
             redirect_uri: redir_url
             url: url.format
                 hostname: @_config.hostname
-                protocol: oauth_proto
-                pathname: oauth_req_path
+                protocol: _oauth_proto
+                pathname: _oauth_req_path
                 query:
                     client_id: @_config.client_id
                     response_type: "code"
@@ -109,7 +141,7 @@ class PersonalApp
         
         #check for issues
         rejection = "Authorization code not provided" if (!args.code?) and !args.is_refresh
-        rejection = "Invalid authorization code" if (!code_regex.test(args.code)) and !args.is_refresh
+        rejection = "Invalid authorization code" if (!_code_regex.test(args.code)) and !args.is_refresh
         rejection = "Redirect URI not provided" if (!args.redirect_uri?) and !args.is_refresh
         rejection = "Refresh token not provided" if (!args.refresh_token?) and args.is_refresh == true
         rejection = "Access token not provided" if (!args.access_token?) and args.is_refresh == true
@@ -126,9 +158,9 @@ class PersonalApp
             client_id: @_config.client_id
             client_secret: @_config.client_secret
         https_opts = 
-            hostname: if @_config.test then test_hostname else @_config.hostname
-            port: test_port if @_config.test
-            path: oauth_access_path
+            hostname: if @_config.test then _test_hostname else @_config.hostname
+            port: _test_port if @_config.test
+            path: _oauth_access_path
             method: "POST"
             rejectUnauthorized: true
             headers:
@@ -143,30 +175,14 @@ class PersonalApp
         post_data = querystring.stringify post_obj
         https_opts.headers["Content-Length"] = post_data.length
         proto_obj = if @_config.test then http else https
-        req = proto_obj.request https_opts, (res) ->
-            res.setEncoding "utf8"
-            json_res = ""
-            res.on "data", (chunk) ->
-                json_res += chunk
-            res.on "end", () ->
-                if @statusCode == 403 and _QPS_REGEX.test(json_res)
-                    return setTimeout @get_access_token_auth, _BACKOFF_DELAY, args, callback
-                if @statusCode != 200 then return deferred.reject new Error("Status code #{@statusCode} - #{json_res}")
-                res_obj = JSON.parse json_res
-                return_obj =
-                    access_token: res_obj.access_token
-                    refresh_token: res_obj.refresh_token
-                    expiration: new Date(Date.now() + res_obj.expires_in*1000)
-                callback null, return_obj if callback? and typeof callback == 'function'
-                deferred.resolve return_obj
-
-        req.on "error", (e) ->
-            if callback? then callback(e)
-            deferred.reject e
-        req.write post_data
-        req.end()
         
         #run callback and return promise
+        _http_req(https_opts, proto_obj, post_data, "utf8").then (res_obj) ->
+            deferred.resolve 
+                access_token: res_obj.access_token
+                refresh_token: res_obj.refresh_token
+                expiration: new Date(Date.now() + res_obj.expires_in*1000)
+        .fail (err) -> deferred.reject err
         return deferred.promise
 
 class PersonalClient
@@ -255,31 +271,18 @@ class PersonalClient
         deferred = q.defer()
         do_request = (options) =>
             https_opts = 
-                hostname: if @access_options.test then test_hostname else @access_options.hostname
-                port: test_port if @access_options.test
-                path: "#{api_path_prefix}/#{options.path}?client_id=#{@access_options.client_id}"
+                hostname: if @access_options.test then _test_hostname else @access_options.hostname
+                port: _test_port if @access_options.test
+                path: "#{_api_path_prefix}/#{options.path}?client_id=#{@access_options.client_id}"
                 method: options.method
                 headers:
                     "Content-Type": "application/json"
                     "Authorization": "Bearer #{@access_options.access_token}"
                     "Secure-Password": @access_options.client_secret
             proto_obj = if @access_options.test then http else https
-            req = proto_obj.request https_opts, (res) ->
-                json_res = ""
-                res.on "data", (chunk) ->
-                    json_res += chunk
-                res.on "end", () ->
-                    if @statusCode == 403 and _QPS_REGEX.test(json_res)
-                        setTimeout @request, _BACKOFF_DELAY, options, callback
-                    if @statusCode != 200 then return deferred.reject new Error("status #{@statusCode}\t#{json_res}")
-                    return_obj = JSON.parse json_res
-                    callback null, return_obj if callback? and typeof callback == 'function'
-                    deferred.resolve return_obj
-            req.on "error", (e) ->
-                if callback? then callback(e)
-                deferred.reject e
-            req.write(JSON.stringify options.data) if options.data?
-            req.end()
+            _http_req(https_opts, proto_obj, JSON.stringify(options.data)).then (res_obj) ->
+                deferred.resolve res_obj
+            .fail (err) -> deferred.reject err
 
         if @access_options.expiration < Date.now()
             @refresh().then ()-> 
@@ -293,41 +296,20 @@ class PersonalClient
         deferred = q.defer()
         do_request = () =>
             try
-                #boundary_str = "----PersonalNodeBoundary#{crypto.randomBytes(32).toString('hex')}"
                 https_opts = 
-                    hostname: if @access_options.test then test_hostname else @access_options.hostname
-                    port: test_port if @access_options.test
+                    hostname: if @access_options.test then _test_hostname else @access_options.hostname
+                    port: _test_port if @access_options.test
                     path: "/file?client_id=#{@access_options.client_id}&files[]=#{encodeURIComponent filename}&gem_id=#{encodeURIComponent gem_id}"
                     method: "POST"
                     headers:
-                        #"Content-Type": "multipart/form-data; boundary=#{boundary_str}"
-                        #"Content-Type": "application/octet-stream"
                         "Content-Type": mime.lookup filename
                         "Content-Length": buf.toString('hex').length/2
-                        #"Transfer-Encoding": "chunked"
                         "Authorization": "Bearer #{@access_options.access_token}"
                         "Secure-Password": @access_options.client_secret
                 proto_obj = if @access_options.test then http else https
-                req = proto_obj.request https_opts, (res) ->
-                    json_res = ""
-                    res.on "data", (chunk) ->
-                        json_res += chunk
-                    res.on "end", () ->
-                        if @statusCode == 403 and _QPS_REGEX.test(json_res)
-                            setTimeout @upload_file, _BACKOFF_DELAY, gem_id, filename, buf
-                        if @statusCode != 200 then return deferred.reject new Error("status #{@statusCode}\t#{json_res}")
-                        return_obj = JSON.parse json_res
-                        callback null, return_obj if callback? and typeof callback == 'function'
-                        deferred.resolve return_obj
-                req.on "error", (e) ->
-                    if callback? then callback(e)
-                    deferred.reject e
-                #req.write "--#{boundary_str}\r\n"
-                #req.write "Content-Disposition: form-data; name=\"fileUpload\"; filename=\"#{filename}\"\r\n"
-                #req.write "Content-Type: #{mime.lookup filename}\r\n\r\n"
-                req.write buf
-                #req.write "\r\n--#{boundary_str}--"
-                req.end()
+                _http_req(https_opts, proto_obj, buf).then (res_obj) ->
+                    deferred.resolve res_obj
+                .fail (err) -> deferred.reject err
             catch err
                 deferred.reject err
     
