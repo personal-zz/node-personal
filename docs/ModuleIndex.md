@@ -20,6 +20,8 @@ MIT License
   
 #### Functions
     
+* [_http_req](Lib:Personal-app#_http_req)
+    
 * [PersonalConnectOptions](Lib:Personal-app#PersonalConnectOptions)
     
 * [PersonalHelpers](Lib:Personal-app#PersonalHelpers)

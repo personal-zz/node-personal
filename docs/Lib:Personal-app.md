@@ -12,6 +12,8 @@
 
 #### Functions
   
+* [\_http\_req](#_http_req)
+  
 * [PersonalConnectOptions](#PersonalConnectOptions)
   
 * [PersonalHelpers](#PersonalHelpers)
@@ -63,9 +65,12 @@ Get the URL for sending a user to the authorization page
 Get the access token for Personal API access using authorization code flow
 
     args:
-        code: string - code returned in querystring of callback url (required)
-        state: string - state parameter return from query string of callback url (required)
-        redirect_uri: redirect_uri from authorization request (required)
+        code: string - code returned in querystring of callback url (or refresh_token if refreshing) (required if is_refresh=false)
+        redirect_uri: redirect_uri from authorization request (required if is_refresh=false)
+        is_refresh: boolean - whether this is a token refresh (optional - default: false)
+        refresh_token: string - refresh token (required if is_refresh=true)
+        access_token: string - access token (required if is_refresh=true)
+
     callback: function - function(err, return_obj){console.log(return_obj.access_token);} (optional - may use returned promise instead)
 
     returns a promise whose resolution value is an object with the following properties
@@ -88,10 +93,25 @@ Get the access token for Personal API access using authorization code flow
 PersonalClient constructor
 
     access_options:
+        client_id: string
+        client_secret: string
         access_token: string - access token from oauth
         refresh_token: string - refresh token from oauth
         expiration: date - time at which access token expires
         sandbox: boolean - Whether to use api-sandbox (default: false)
+
+      
+##### <a name="bind">bind(event_name, callback)</a>
+Register a callback to run when certain events happen
+
+    event_name: string - Name of events
+    callback: string - function(data){}
+
+Valid events and data:
+    "refresh_token": Called when token is refreshed.  Data is:
+        access_token: access token
+        refresh_token: refresh_token
+        expiration: Date of expiration
 
       
 ##### <a name="refresh">refresh(callback)</a>
@@ -103,7 +123,7 @@ Performs a refresh on the access token.  Generally PersonalClient will take care
 
       
 ##### <a name="request">request(options, callback)</a>
-GET from the Personal API
+send request to the Personal API
 
     options: 
         path: string - everything after "/api/v1" in the path (required)
@@ -112,6 +132,9 @@ GET from the Personal API
     callback: function(err, data){} (optional)
 
     return a promise containing the parsed object returned from the server
+
+      
+##### <a name="upload_file">upload\_file(gem_id, filename, buf)</a>
 
       
     
@@ -199,6 +222,9 @@ Returns the permissions as a string in the format required for the Personal OAut
 
 
 ## Functions
+  
+### <a name="_http_req">\_http\_req(opts, proto_obj, data, res_enc, callback)</a>
+
   
 ### <a name="PersonalConnectOptions">PersonalConnectOptions(options)</a>
 Add all options to the connect/express options for the Personal library
