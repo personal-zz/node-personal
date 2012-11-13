@@ -230,11 +230,12 @@ Returns the permissions as a string in the format required for the Personal OAut
 Add all options to the connect/express options for the Personal library
 
     options:
-       client_id:
-       client_secret:
-       scope:
-       update: 
-       sandbox:
+       client_id: (required)
+       client_secret: (required)
+       scope: (required)
+       update: boolean - (optional - default: true)
+       sandbox: boolean - true to use sandbox, false otherwise (optional - default: false)
+       callback_uri: string - override dynamic callback uri with something static (optional - default: dynamically created)
 
   
 ### <a name="PersonalHelpers">PersonalHelpers(app)</a>
