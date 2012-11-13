@@ -5,6 +5,8 @@
 MIT License
 ###
 
+#TODO: Treat secure pw and shared secret as separate entities
+
 q = require "q"
 url = require "url"
 mime = require "mime"
@@ -489,11 +491,12 @@ PersonalConnectOptions = (options) ->
     Add all options to the connect/express options for the Personal library
     
         options:
-           client_id:
-           client_secret:
-           scope:
-           update: 
-           sandbox:
+           client_id: (required)
+           client_secret: (required)
+           scope: (required)
+           update: boolean - (optional - default: true)
+           sandbox: boolean - true to use sandbox, false otherwise (optional - default: false)
+           callback_uri: string - override dynamic callback uri with something static (optional - default: dynamically created)
     ###
     connect_opts.set(key,val) for key,val of options
 
@@ -592,10 +595,13 @@ PersonalMiddleware = (req, res, next) ->
                 #TODO: remove code, state, and personal from query (redirect)
 
             return
-    
+   
     #we need to create the url for login and auth
     if (not sess.state?) or (not sess.redirect_uri?)
-        new_redir_uri = url.parse "#{req.protocol}://#{req.headers.host}#{req.url}", true
+        if connect_opts.get("callback_uri")?
+            new_redir_uri = url.parse connect_opts.get("callback_uri"), true
+        else
+            new_redir_uri = url.parse "#{req.protocol}://#{req.headers.host}#{req.url}", true
         new_redir_uri.search = ""
         delete new_redir_uri.query.code
         new_redir_uri.query.personal = true
