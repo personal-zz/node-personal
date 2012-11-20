@@ -500,7 +500,7 @@ PersonalConnectOptions = (options) ->
     ###
     PersonalConnectOptions[key] = val for key,val of options
     #connect_opts.set(key,val) for key,val of options
-
+ 
 PersonalConnectOptions 
     update: true
     sandbox: false
