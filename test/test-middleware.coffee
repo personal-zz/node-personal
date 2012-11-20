@@ -1,11 +1,12 @@
-PersonalScope = require("../index").Scope
-PersonalApp = require("../index").App
-PersonalMid = require("../index").Middleware
-PersonalOpt = require("../index").Options
+
 PersonalHelpers = require("../index").Helpers
-url = require "url"
+PersonalMid = require("../index").Middleware
+PersonalScope = require("../index").Scope
+PersonalOpt = require("../index").Options
+PersonalApp = require("../index").App
 crypto = require "crypto"
-require "should"
+should = require "should"
+url = require "url"
 
 _are_colls_equiv = (arr1, arr2) ->
     to_return = true
@@ -15,77 +16,55 @@ _are_colls_equiv = (arr1, arr2) ->
         to_return = false if not (item in arr1)
     return to_return
 
-describe "Personal Connect/Express Integration", () ->
-    scope = new PersonalScope
-        literal: "read_0135"
-    req_temp = 
-        session: {}
-        query: {}
-        headers:
-            host: "localhost"
-        protocol: "https"
-        url: "/"
-    describe "PersonalOptions", () ->
-        it "should contain correct default values", (done) ->
-            console.log PersonalOpt
+describe "Personal Connect/Express Integration\t", () ->
+    describe "PersonalOptions\t", () ->
+        it "should contain correct default values", () ->
             PersonalOpt.update.should.be.true
             PersonalOpt.sandbox.should.be.false
-            done()
-        it "should merge all key/values into itself", (done) ->
-            app = 
-                locals: (obj) ->
-                    app.locals[key] = val for key,val of obj
-            helpers = PersonalHelpers(app)
-
-            PersonalOpt client_id: "somethingelse"
-            req = {}
-            req[key] = val for key,val of req_temp
-            next = (err) ->
-                PersonalOpt client_id: "clientid"
-                if err? then return done(err)
-                url_obj = url.parse app.locals.auth_req_url(), true
-                if url_obj.query.client_id == "somethingelse" then done() else done(new Error "Option merge failed")
-            PersonalMid req, {}, next
-        it "should merge new key/values into itself", (done) ->
-            app = 
-                locals: (obj) ->
-                    app.locals[key] = val for key,val of obj
-            helpers = PersonalHelpers(app)
-
-            PersonalOpt client_id: "somethingelse"
-            req = {}
-            req[key] = val for key,val of req_temp
-            next = (err) ->
-                PersonalOpt client_id: "clientid"
-                if err? then return done(err)
-                url_obj = url.parse app.locals.auth_req_url(), true
-                if url_obj.query.client_id == "somethingelse" then done() else done(new Error "Option merge failed")
-            PersonalMid req, {}, next
-    describe "PersonalMiddleware", () ->
-        PersonalOpt
-            client_id: "clientid"
-            client_secret: "client_secret"
-            scope: scope
-            update: false
-            sandbox: true
+        it "should update existing values", () ->
+            PersonalOpt 
+                update: false
+                sandbox: true
+            PersonalOpt.update.should.be.false
+            PersonalOpt.sandbox.should.be.true
+        it "should merge new key/values into itself", () ->
+            PersonalOpt 
+                client_id: 'somesuch'
+                client_secret: 'othersuch'
+            PersonalOpt.update.should.be.false
+            PersonalOpt.sandbox.should.be.true
+            PersonalOpt.client_id.should.equal 'somesuch'
+            PersonalOpt.client_secret.should.equal 'othersuch'
+    describe "PersonalMiddleware\t", () ->
+        [req,scope] = [null,null]
+        beforeEach () ->
+            PersonalOpt
+                client_id: "clientid"
+                client_secret: "client_secret"
+                scope: scope
+                update: false
+                sandbox: true
+            scope = new PersonalScope
+                literal: "read_0135"
+            req = 
+                session: {}
+                query: {}
+                headers:
+                    host: "localhost"
+                protocol: "https"
+                url: "/"
         it "should create session.personal if it doesn't exist", (done) ->
-            req = {}
-            req[key] = val for key,val of req_temp
             next = (err) ->
                 if err? then return done(err)
                 if req.session?.personal? then done() else done(new Error "req.session.personal doesn't exist")
             PersonalMid req, {}, next
         it "should add state and redirect to session", (done) ->
-            req = {}
-            req[key] = val for key,val of req_temp
             next = (err) ->
                 if err? then return done(err)
                 if req.session?.personal?.state? then return done() else return done(new Error "session.personal.state doesn't exist")
                 if req.session?.personal?.redirect_uri? then done() else done(new Error "session.personal.redirect_uri doesn't exist")
             PersonalMid req, {}, next
         it "should create client if it has a valid session", (done) ->
-            req = {}
-            req[key] = val for key,val of req_temp
             req.session.personal.access_token = "access"
             req.session.personal.refresh_token = "refresh"
             req.session.personal.expiration = new Date()
@@ -93,18 +72,47 @@ describe "Personal Connect/Express Integration", () ->
                 if err? then return done(err)
                 if req.personal?.client? then done() else done(new Error "req.personal.client doesn't exist")
             PersonalMid req, {}, next
-    describe "PersonalHelpers", () ->
-        it "should create auth_req_url helper", (done) ->
+    describe "PersonalHelpers\t", () ->
+        [app, helpers, req, scope] = [null, null, null, null]
+        beforeEach () ->
+            scope = new PersonalScope
+                literal: "read_0135"
+            req = 
+                session: {}
+                query: {}
+                headers:
+                    host: "localhost"
+                protocol: "https"
+                url: "/"
+            PersonalOpt
+                client_id: "clientid"
+                client_secret: "client_secret"
+                scope: scope
+                update: false
+                sandbox: true
             app = 
                 locals: (obj) ->
                     app.locals[key] = val for key,val of obj
             helpers = PersonalHelpers(app)
-
-            req = {}
-            req[key] = val for key,val of req_temp
+        it "should create auth_req_url helper", () ->
             next = (err) ->
                 if err? then return done(err)
-                if !app.locals?.auth_req_url? then return done(new Error "auth_req_url does not exist")
-                #this could be ALOT better
-                if app.locals.auth_req_url() != "" then done() else done(new Error "invalid auth_req_url")
+                should.not.exist err
+                auth_url_obj = url.parse app.locals.auth_req_url(), true
+                redir_url_obj = url.parse auth_url_obj.query.redirect_uri, true
+                redir_url_obj.protocol.should.equal 'https:'
+                redir_url_obj.hostname.should.equal 'localhost'
+                redir_url_obj.query.personal.should.equal 'true'
+                redir_url_obj.query.state.should.be.a('string').and.have.length 64
+            PersonalMid req, {}, next
+        it "should use provided callback_uri if present", () ->
+            PersonalOpt callback_uri: "http://www.host.com"
+            next = (err) ->
+                should.not.exist err
+                auth_url_obj = url.parse app.locals.auth_req_url(), true
+                redir_url_obj = url.parse auth_url_obj.query.redirect_uri, true
+                redir_url_obj.protocol.should.equal 'http:'
+                redir_url_obj.hostname.should.equal 'www.host.com'
+                redir_url_obj.query.personal.should.equal 'true'
+                redir_url_obj.query.state.should.be.a('string').and.have.length 64
             PersonalMid req, {}, next

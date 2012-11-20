@@ -470,16 +470,6 @@ class PersonalScope
         return @to_s()
 
 #Stuff for the connect/express use case
-connect_opts = do ->
-    _opts =
-        update: true
-        sandbox: false
-    ret_val =
-        get: (key) -> if key? then return _opts[key] else return _opts
-        set: (key,val) -> 
-            _opts[key] = val
-            return _opts
-
 connect_curr_req_url = do ->
     _url = "init_val"
     ret_val = 
@@ -497,10 +487,14 @@ PersonalConnectOptions = (options) ->
            update: boolean - (optional - default: true)
            sandbox: boolean - true to use sandbox, false otherwise (optional - default: false)
            callback_uri: string - override dynamic callback uri with something static (optional - default: dynamically created)
-    ###
-    PersonalConnectOptions[key] = val for key,val of options
-    #connect_opts.set(key,val) for key,val of options
 
+        returns its full options object
+    ###
+    PersonalConnectOptions[key] = val for own key,val of options
+    ret = {}
+    ret[k]=v for own k,v of PersonalConnectOptions
+    return ret
+ 
 PersonalConnectOptions 
     update: true
     sandbox: false
@@ -557,20 +551,19 @@ PersonalMiddleware = (req, res, next) ->
     req.session.personal = {} if not req.session.personal?
     #req.personal.logout() if not req.personal? #<-- HUH?!
     sess = req.session.personal
-
     #we already have a valid session
     if sess.access_token? and sess.refresh_token? and sess.expiration?
         req.personal.logged_in = true
         req.personal.client = new PersonalClient
-            client_id: connect_opts.get "client_id"
-            client_secret: connect_opts.get "client_secret"
+            client_id: PersonalConnectOptions.client_id
+            client_secret: PersonalConnectOptions.client_secret
             access_token: sess.access_token
             refresh_token: sess.refresh_token
             expiration: sess.expiration
             redirect_uri: sess.redirect_uri
-            sandbox: connect_opts.get "sandbox"
+            sandbox: PersonalConnectOptions.sandbox
         return next()
-    app = new PersonalApp connect_opts.get()
+    app = new PersonalApp PersonalConnectOptions {}
 
     #we are at the callback url
     if req.query.code? and req.query.state? and req.query.personal?
@@ -584,13 +577,13 @@ PersonalMiddleware = (req, res, next) ->
                 for own key,val of access_obj
                     sess[key] = val 
                 req.personal.client = new PersonalClient
-                    client_id: connect_opts.get "client_id"
-                    client_secret: connect_opts.get "client_secret"
+                    client_id: PersonalConnectOptions.client_id
+                    client_secret: PersonalConnectOptions.client_secret
                     access_token: sess.access_token
                     refresh_token: sess.refresh_token
                     expiration: sess.expiration
                     redirect_uri: sess.redirect_uri
-                    sandbox: connect_opts.get "sandbox"
+                    sandbox: PersonalConnectOptions.sandbox
                 req.personal.logged_in = true
                 next()
             ,(err) ->
@@ -603,17 +596,17 @@ PersonalMiddleware = (req, res, next) ->
    
     #we need to create the url for login and auth
     if (not sess.state?) or (not sess.redirect_uri?)
-        if connect_opts.get("callback_uri")?
-            new_redir_uri = url.parse connect_opts.get("callback_uri"), true
+        if PersonalConnectOptions.callback_uri?
+            new_redir_uri = url.parse PersonalConnectOptions.callback_uri, true
         else
             new_redir_uri = url.parse "#{req.protocol}://#{req.headers.host}#{req.url}", true
         new_redir_uri.search = ""
         delete new_redir_uri.query.code
         new_redir_uri.query.personal = true
         auth_req_obj = app.get_auth_request_url
-            scope: connect_opts.get "scope"
-            update: connect_opts.get "update"
-            sandbox: connect_opts.get "sandbox"
+            scope: PersonalConnectOptions.scope
+            update: PersonalConnectOptions.update
+            sandbox: PersonalConnectOptions.sandbox
             redirect_uri: url.format new_redir_uri
         connect_curr_req_url.set auth_req_obj.url
         sess.req_url = auth_req_obj.url
