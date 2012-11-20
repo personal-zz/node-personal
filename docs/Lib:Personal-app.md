@@ -237,6 +237,8 @@ Add all options to the connect/express options for the Personal library
        sandbox: boolean - true to use sandbox, false otherwise (optional - default: false)
        callback_uri: string - override dynamic callback uri with something static (optional - default: dynamically created)
 
+    returns its full options object
+
   
 ### <a name="PersonalHelpers">PersonalHelpers(app)</a>
 Provides helpers for Express views

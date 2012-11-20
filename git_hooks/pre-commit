@@ -1,0 +1,13 @@
+#!/bin/sh
+
+#generate docs and add to index
+echo "pre-commit:\tGenerating documentation"
+coffeedoc --renderer gfm --hide-private lib/*
+git add docs/
+
+cat README-base.md docs/Lib* CHANGELOG.md LICENSE.md > README.md
+git add README.md
+
+#run tests, stop commit if they fail!
+npm test
+exit $?
