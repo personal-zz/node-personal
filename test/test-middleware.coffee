@@ -18,12 +18,6 @@ _are_colls_equiv = (arr1, arr2) ->
 describe "Personal Connect/Express Integration", () ->
     scope = new PersonalScope
         literal: "read_0135"
-    PersonalOpt
-        client_id: "clientid"
-        client_secret: "client_secret"
-        scope: scope
-        update: false
-        sandbox: true
     req_temp = 
         session: {}
         query: {}
@@ -32,6 +26,26 @@ describe "Personal Connect/Express Integration", () ->
         protocol: "https"
         url: "/"
     describe "PersonalOptions", () ->
+        it "should contain correct default values", (done) ->
+            console.log PersonalOpt
+            PersonalOpt.update.should.be.true
+            PersonalOpt.sandbox.should.be.false
+            done()
+        it "should merge all key/values into itself", (done) ->
+            app = 
+                locals: (obj) ->
+                    app.locals[key] = val for key,val of obj
+            helpers = PersonalHelpers(app)
+
+            PersonalOpt client_id: "somethingelse"
+            req = {}
+            req[key] = val for key,val of req_temp
+            next = (err) ->
+                PersonalOpt client_id: "clientid"
+                if err? then return done(err)
+                url_obj = url.parse app.locals.auth_req_url(), true
+                if url_obj.query.client_id == "somethingelse" then done() else done(new Error "Option merge failed")
+            PersonalMid req, {}, next
         it "should merge new key/values into itself", (done) ->
             app = 
                 locals: (obj) ->
@@ -48,6 +62,12 @@ describe "Personal Connect/Express Integration", () ->
                 if url_obj.query.client_id == "somethingelse" then done() else done(new Error "Option merge failed")
             PersonalMid req, {}, next
     describe "PersonalMiddleware", () ->
+        PersonalOpt
+            client_id: "clientid"
+            client_secret: "client_secret"
+            scope: scope
+            update: false
+            sandbox: true
         it "should create session.personal if it doesn't exist", (done) ->
             req = {}
             req[key] = val for key,val of req_temp

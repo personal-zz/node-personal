@@ -498,7 +498,12 @@ PersonalConnectOptions = (options) ->
            sandbox: boolean - true to use sandbox, false otherwise (optional - default: false)
            callback_uri: string - override dynamic callback uri with something static (optional - default: dynamically created)
     ###
-    connect_opts.set(key,val) for key,val of options
+    PersonalConnectOptions[key] = val for key,val of options
+    #connect_opts.set(key,val) for key,val of options
+
+PersonalConnectOptions 
+    update: true
+    sandbox: false
 
 PersonalHelpers = (app) ->
     ###
@@ -550,7 +555,7 @@ PersonalMiddleware = (req, res, next) ->
     #check that we have session and init it
     return next(new Error "session middleware not loaded") if not req.session? 
     req.session.personal = {} if not req.session.personal?
-    req.personal.logout() if not req.personal?
+    #req.personal.logout() if not req.personal? #<-- HUH?!
     sess = req.session.personal
 
     #we already have a valid session
