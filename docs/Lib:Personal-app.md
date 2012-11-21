@@ -95,6 +95,7 @@ PersonalClient constructor
     access_options:
         client_id: string
         client_secret: string
+        client_password: string - if you have changed your client password, provide it (optional)
         access_token: string - access token from oauth
         refresh_token: string - refresh token from oauth
         expiration: date - time at which access token expires

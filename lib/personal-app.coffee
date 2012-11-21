@@ -200,6 +200,7 @@ class PersonalClient
             access_options:
                 client_id: string
                 client_secret: string
+                client_password: string - if you have changed your client password, provide it (optional)
                 access_token: string - access token from oauth
                 refresh_token: string - refresh token from oauth
                 expiration: date - time at which access token expires
@@ -280,7 +281,7 @@ class PersonalClient
                 headers:
                     "Content-Type": "application/json"
                     "Authorization": "Bearer #{@access_options.access_token}"
-                    "Secure-Password": @access_options.client_secret
+                    "Secure-Password": @access_options.client_password || @access_options.client_secret
             proto_obj = if @access_options.test then http else https
             _http_req(https_opts, proto_obj, JSON.stringify(options.data)).then (res_obj) ->
                 deferred.resolve res_obj
@@ -307,7 +308,7 @@ class PersonalClient
                         "Content-Type": mime.lookup filename
                         "Content-Length": buf.toString('hex').length/2
                         "Authorization": "Bearer #{@access_options.access_token}"
-                        "Secure-Password": @access_options.client_secret
+                        "Secure-Password": @access_options.client_password || @access_options.client_secret
                 proto_obj = if @access_options.test then http else https
                 _http_req(https_opts, proto_obj, buf).then (res_obj) ->
                     deferred.resolve res_obj

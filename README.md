@@ -117,6 +117,7 @@ PersonalClient constructor
     access_options:
         client_id: string
         client_secret: string
+        client_password: string - if you have changed your client password, provide it (optional)
         access_token: string - access token from oauth
         refresh_token: string - refresh token from oauth
         expiration: date - time at which access token expires
@@ -305,9 +306,12 @@ Once users return from the authorization page, req.personal.client will be a wor
 
 #Change Log
 
-## Version 0.1.5 - November 20, 2012
+## Version 0.1.6 - November 20, 2012
 
-- Fixed a variety of bugs ([@mike][])
+- Added ability to use a changed Secure Password ([@mike][]) 
+- Fixed large bug in Personal login management ([@mike][])
+- Ficed large bug in PersonalConnectOptions ([@mike][])
+- Fixed a variety of smaller bugs ([@mike][])
 - Added fuller suite of test cases ([@mike][])
 
 ## Version 0.1.0 - October 31, 2012
