@@ -563,6 +563,7 @@ PersonalMiddleware = (req, res, next) ->
             redirect_uri: sess.redirect_uri
             sandbox: PersonalConnectOptions.sandbox
         return next()
+    
     app = new PersonalApp PersonalConnectOptions {}
 
     #we are at the callback url
@@ -573,6 +574,7 @@ PersonalMiddleware = (req, res, next) ->
                 code: req.query.code
                 state: req.query.state
                 redirect_uri: sess.redirect_uri
+            delete sess.state
             promise.then (access_obj) ->
                 for own key,val of access_obj
                     sess[key] = val 
@@ -585,14 +587,16 @@ PersonalMiddleware = (req, res, next) ->
                     redirect_uri: sess.redirect_uri
                     sandbox: PersonalConnectOptions.sandbox
                 req.personal.logged_in = true
-                next()
+                new_q = {}
+                for own k,v of req.query
+                    new_q[k] = v if k not in ["code","state","personal"]
+                res.redirect "#{req.path}#{querystring.stringify new_q}"
             ,(err) ->
                 next(err)
-            promise.fin () ->
-                sess.state = null
-                #TODO: remove code, state, and personal from query (redirect)
-
-            return
+            return 
+        else
+            delete sess.state
+            delete sess.redirect_uri
    
     #we need to create the url for login and auth
     if (not sess.state?) or (not sess.redirect_uri?)
