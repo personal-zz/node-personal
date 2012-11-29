@@ -10,4 +10,7 @@ git add README.md
 
 #run tests, stop commit if they fail!
 npm test
-exit $?
+RET_VAL=$?
+travis-lint
+RET_VAL=$RET_VAL + $?
+exit $RET_VAL
