@@ -8,6 +8,10 @@ git add docs/
 cat README-base.md docs/Lib* CHANGELOG.md LICENSE.md > README.md
 git add README.md
 
+#compile sources and tests
+coffee -cl *.coffee */*.coffee
+git add -f tests/*.js
+
 #run tests, stop commit if they fail!
 npm test
 RET_VAL=$?
