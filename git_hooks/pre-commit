@@ -10,7 +10,7 @@ git add README.md
 
 #compile sources and tests
 coffee -cl *.coffee */*.coffee
-git add -f tests/*.js
+git add -f test/*.js
 
 #run tests, stop commit if they fail!
 npm test
