@@ -12,5 +12,5 @@ git add README.md
 npm test
 RET_VAL=$?
 travis-lint
-RET_VAL=$RET_VAL + $?
+RET_VAL=$(($RET_VAL + $?))
 exit $RET_VAL
