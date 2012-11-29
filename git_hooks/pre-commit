@@ -9,8 +9,11 @@ cat README-base.md docs/Lib* CHANGELOG.md LICENSE.md > README.md
 git add README.md
 
 #compile sources and tests
-coffee -cl *.coffee */*.coffee
-git add -f test/*.js
+mkdir -p js/test
+coffee -cl -o js *.coffee
+coffee -cl -o js/test test/*.coffee
+git add -f js/*.js
+git add -f js/test/*.js
 
 #run tests, stop commit if they fail!
 npm test
