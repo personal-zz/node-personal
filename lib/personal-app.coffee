@@ -5,8 +5,6 @@
 MIT License
 ###
 
-#TODO: Treat secure pw and shared secret as separate entities
-
 q = require "q"
 url = require "url"
 mime = require "mime"
