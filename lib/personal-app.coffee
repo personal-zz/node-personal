@@ -24,10 +24,10 @@ _test_port = 7357
 
 _BACKOFF_DELAY = 2000 #2s
 
-_code_regex = /^[a-z0-9]{20}$/gi
+_code_regex = /^[a-z0-9]{20}$/i
 _code_regex.compile _code_regex
 
-_QPS_REGEX = /developer over qps/igm
+_QPS_REGEX = /developer over qps/im
 _QPS_REGEX.compile _QPS_REGEX
 
 #Helper fns
