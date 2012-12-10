@@ -1,6 +1,6 @@
 {
   "name": "node-personal",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Library for connecting to Personal API using Node.js",
   "main": "index.js",
   "dependencies": {

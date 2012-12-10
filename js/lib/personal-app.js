@@ -9,7 +9,7 @@ MIT License
 
 
 (function() {
-  var PersonalApp, PersonalClient, PersonalConnectOptions, PersonalHelpers, PersonalMiddleware, PersonalScope, connect_curr_req_url, crypto, http, https, mime, q, querystring, url, _BACKOFF_DELAY, _QPS_REGEX, _api_path_prefix, _code_regex, _http_req, _oauth_access_path, _oauth_proto, _oauth_req_path, _test_hostname, _test_port, _test_proto,
+  var PersonalApp, PersonalClient, PersonalConnectOptions, PersonalHelpers, PersonalMiddleware, PersonalScope, connect_curr_req_url, crypto, http, https, mime, q, querystring, url, _ANCHOR_REGEX, _BACKOFF_DELAY, _QPS_REGEX, _api_path_prefix, _code_regex, _http_req, _oauth_access_path, _oauth_proto, _oauth_req_path, _test_hostname, _test_port, _test_proto,
     __hasProp = {}.hasOwnProperty,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
@@ -50,6 +50,10 @@ MIT License
   _QPS_REGEX = /developer over qps/im;
 
   _QPS_REGEX.compile(_QPS_REGEX);
+
+  _ANCHOR_REGEX = /#/g;
+
+  _ANCHOR_REGEX.compile(_ANCHOR_REGEX);
 
   _http_req = function(opts, proto_obj, data, res_enc, callback) {
     var deferred, req, _handle_err;
@@ -356,7 +360,7 @@ MIT License
         https_opts = {
           hostname: _this.access_options.test ? _test_hostname : _this.access_options.hostname,
           port: _this.access_options.test ? _test_port : void 0,
-          path: "" + _api_path_prefix + "/" + (options.path.replace("#", "%23")) + "?client_id=" + _this.access_options.client_id,
+          path: "" + _api_path_prefix + "/" + (options.path.replace(_ANCHOR_REGEX, "%23")) + "?client_id=" + _this.access_options.client_id,
           method: options.method,
           headers: {
             "Content-Type": "application/json",

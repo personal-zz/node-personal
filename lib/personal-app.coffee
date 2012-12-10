@@ -30,6 +30,9 @@ _code_regex.compile _code_regex
 _QPS_REGEX = /developer over qps/im
 _QPS_REGEX.compile _QPS_REGEX
 
+_ANCHOR_REGEX = /#/g
+_ANCHOR_REGEX.compile _ANCHOR_REGEX
+
 #Helper fns
 _http_req = (opts, proto_obj, data, res_enc, callback) ->
     deferred = q.defer()
@@ -274,7 +277,7 @@ class PersonalClient
             https_opts = 
                 hostname: if @access_options.test then _test_hostname else @access_options.hostname
                 port: _test_port if @access_options.test
-                path: "#{_api_path_prefix}/#{options.path.replace "#", "%23"}?client_id=#{@access_options.client_id}"
+                path: "#{_api_path_prefix}/#{options.path.replace _ANCHOR_REGEX, "%23"}?client_id=#{@access_options.client_id}"
                 method: options.method
                 headers:
                     "Content-Type": "application/json"
