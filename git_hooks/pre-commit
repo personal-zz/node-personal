@@ -11,6 +11,7 @@ git add README.md
 #compile sources and tests
 mkdir -p js/test
 mkdir -p js/lib
+coffee -cl *.coffee lib/*.coffee
 coffee -cl -o js *.coffee
 coffee -cl -o js/test test/*.coffee
 coffee -cl -o js/lib lib/*.coffee
