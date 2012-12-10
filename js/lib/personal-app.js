@@ -356,7 +356,7 @@ MIT License
         https_opts = {
           hostname: _this.access_options.test ? _test_hostname : _this.access_options.hostname,
           port: _this.access_options.test ? _test_port : void 0,
-          path: "" + _api_path_prefix + "/" + (encodeURI(options.path)) + "?client_id=" + _this.access_options.client_id,
+          path: "" + _api_path_prefix + "/" + (options.path.replace("#", "%23")) + "?client_id=" + _this.access_options.client_id,
           method: options.method,
           headers: {
             "Content-Type": "application/json",
