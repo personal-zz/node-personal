@@ -274,7 +274,7 @@ class PersonalClient
             https_opts = 
                 hostname: if @access_options.test then _test_hostname else @access_options.hostname
                 port: _test_port if @access_options.test
-                path: "#{_api_path_prefix}/#{options.path}?client_id=#{@access_options.client_id}"
+                path: "#{_api_path_prefix}/#{encodeURI options.path}?client_id=#{@access_options.client_id}"
                 method: options.method
                 headers:
                     "Content-Type": "application/json"
