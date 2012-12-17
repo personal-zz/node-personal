@@ -592,7 +592,7 @@ PersonalMiddleware = (req, res, next) ->
                 new_q = {}
                 for own k,v of req.query
                     new_q[k] = v if k not in ["code","state","personal"]
-                res.redirect "#{req.path}#{querystring.stringify new_q}"
+                res.redirect(PersonalConnectOptions.callback_uri or "#{req.path}#{querystring.stringify new_q}")
             ,(err) ->
                 next(err)
             return 

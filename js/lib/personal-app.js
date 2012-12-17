@@ -795,7 +795,7 @@ MIT License
               new_q[k] = v;
             }
           }
-          return res.redirect("" + req.path + (querystring.stringify(new_q)));
+          return res.redirect(PersonalConnectOptions.callback_uri || ("" + req.path + (querystring.stringify(new_q))));
         }, function(err) {
           return next(err);
         });
