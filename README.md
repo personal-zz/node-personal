@@ -8,15 +8,15 @@ __NodeJS library for Personal Web API__
 
 ###Install
 
-stub
+TODO
 
 ###Use
 
-stub
+TODO
 
 ###Contribute
 
-stub
+TODO
 
 ##API Docs
 
