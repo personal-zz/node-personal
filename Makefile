@@ -1,4 +1,4 @@
 test:
-	@./node_modules/.bin/mocha js/test -R nyan
+	@./node_modules/.bin/mocha js/test
 
 .PHONY: test
