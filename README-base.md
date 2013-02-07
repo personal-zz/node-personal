@@ -1,4 +1,4 @@
-#node-personal [![Build Status](https://secure.travis-ci.org/mike-spainhower/node-personal.png?branch=master)](https://travis-ci.org/mike-spainhower/node-personal)
+#node-personal [![Build Status](https://secure.travis-ci.org/Personal/node-personal.png?branch=master)](https://travis-ci.org/mike-spainhower/node-personal)
 
 ##Overview
 
